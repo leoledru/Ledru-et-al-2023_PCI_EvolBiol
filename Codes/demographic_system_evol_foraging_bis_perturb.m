@@ -1,4 +1,5 @@
-%% CODE DU SYSTEME DE DYNAMIQUE
+%% CODE DU SYSTEME DYNAMIQUE ADAPTE POUR LA PERTURBATION NICHE-SPEED 
+%% Ajout d'une fonction pour la vitesse de déplacement de y0 (debut de code)
 
 % Prend en entree le vecteur vertical B contenant (dans l'ordre !) les
 % densites des animaux, les densites des plantes, les efforts_ij (matrice
@@ -14,30 +15,59 @@
 % l'inverse par rapport à l'ancien code.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dB = demographic_system_evol_foraging_bis(t, B, number_of_animals, delta_ij, extraction_coeff, conversion_coeff,...
-       animal_intrinsic_growth, animal_intraspe_compet, plant_intrinsic_growth, seuil_effort, A_foraging,...
-       handling_time, number_of_plants, A_animal, A_plant, dx, dy, dz, Compet, K, seuil_abondance,...
-       effort_speed_of_change, number_of_foraging, Foraging_trait, plant_intraspe_compet)
+function dB = demographic_system_evol_foraging_bis_perturb(t, B, number_of_animals, delta_ij, extraction_coeff, conversion_coeff,...
+       animal_intrinsic_growth, animal_intraspe_compet, plant_intrinsic_growth, A_foraging,...
+       handling_time, number_of_plants, A_animal, A_plant, dx, dy, dz, Compet, seuil_abondance,...
+       effort_speed_of_change, number_of_foraging, Foraging_trait, traits_of_plants_b, traits_of_plants, K0, sigmaK, increment)
 
-B_animal = B(1:number_of_animals*number_of_foraging);
-B_plant = B(number_of_animals*number_of_foraging + 1:number_of_animals*number_of_foraging+number_of_plants);
+
+y0 = B(end);
+d_y0 = increment;
+
+if y0>35
+    n = 1;
+    while y0 - (36+70*n) >= 0
+        n = n + 1;
+    end
+    y0 = y0 - 70*n;
+end
+    
+Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^2./(2*sigmaK^2)) ;
+K_b = Kf(traits_of_plants_b); % compute K on a larger niche (traits_of_plants_b = 2*traits_of_plants
+K_b(K_b<1e-5) = 0; 
+
+wrap_right = K_b(116:end); % if the niche overflows to the right, catch the values out of bound
+wrap_right(wrap_right==0) = []; % remove zero
+if isempty(wrap_right)==0 % if still positive value
+    K_b(39:38+length(wrap_right)) = wrap_right; % replace out of right-bound values to the left of the niche
+end
+wrap_left = K_b(1:38); % same process but with the left bound
+wrap_left(wrap_left==0) = [];
+if isempty(wrap_left)==0
+    K_b(116-length(wrap_left):115) = wrap_left;
+end
+
+K = K_b(39:115); % extract the niche K, as the center of the extand niche K_b
+
+
+B_animal = B(1:number_of_animals*number_of_foraging) ;
+B_plant = B(number_of_animals*number_of_foraging + 1:number_of_animals*number_of_foraging+number_of_plants) ;
 
 % B_animal est maintenant une matrice, x en ordonnees, z (foraging) en abscisse
-B_animal = reshape(B_animal,number_of_animals,number_of_foraging);
+B_animal = reshape(B_animal,number_of_animals,number_of_foraging) ;
 
 % Mise a zero si inferieur au seuil d'abondance
-B_animal = B_animal.*(B_animal>seuil_abondance);
+B_animal = B_animal.*(B_animal>seuil_abondance) ;
 B_plant = B_plant.*(B_plant>seuil_abondance);
 
 % Efforts en matrice 3D avec z (foraging) en dimension 3
-Effort_ij = B(number_of_animals*number_of_foraging+number_of_plants+1:end);
+Effort_ij = B(number_of_animals*number_of_foraging+number_of_plants+1:end-1);
 Effort_ij = reshape(Effort_ij,number_of_plants,number_of_animals,number_of_foraging);
 
 % Efforts tondeuse
-Effort_sans_of = B_plant./(sum(B_plant) + (sum(B_plant)==0)) ; %pour eviter la division par 0
 %Effort_sans_of = B_plant./sum(B_plant);
+Effort_sans_of = B_plant./(sum(B_plant) + (sum(B_plant)==0)) ; %pour eviter la division par 0
 Effort_sans_of = repmat(Effort_sans_of,[1 number_of_animals number_of_foraging]);
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
    
@@ -70,7 +100,7 @@ dB_animal = reshape(dB_animal,number_of_animals*number_of_foraging,1);
 
 % VERSION DOEBELI DIECKANN
 p_eff = sum(Compet.*B_plant',2).*dy;
-plant_growth = plant_intrinsic_growth*(1 - p_eff./K);
+plant_growth = plant_intrinsic_growth*(1 - p_eff./(K + 1.*(K==0)));
 dB_plant = diffusion_plant + (plant_growth - functional_response_plant).*B_plant;
 
 % VERSION 1.20
@@ -113,5 +143,5 @@ for j = index_j
 end
 deffort = reshape(F_effort,[],1);
 
-dB = [dB_animal;dB_plant;deffort];
+dB = [dB_animal;dB_plant;deffort;d_y0];
 end
