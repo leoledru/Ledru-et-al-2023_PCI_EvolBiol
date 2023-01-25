@@ -1,7 +1,5 @@
-%% POSTPROCESS DE LA COMPARAISON ENTRE COMMUNAUTES AVEC/SANS AF
-
-clear all; clc;
-
+clear all;clc
+%%
 number_of_animals = 11;
 number_of_plants  = 11;
 number_of_foraging = 11;
@@ -16,10 +14,7 @@ foraging_trait = linspace(0,1,number_of_foraging);
 
 % load('community_comparison6.mat');
 % load('community_comparison_CK.mat');
-
-% load('community_comparison.mat');
-% load('community_comparison_b.mat');
-load('community_comparison_all.mat'); % community_comparison.mat + community_comparison_b.mat
+load('community_comparison.mat');
 
 % each column is a simulation, row 1 = animal simu AF; row 2 = plant simu AF;
 % row 3 = Effort simu AF; row 4 = animal simu tondeuse; row 5 = plant simu
@@ -27,7 +22,7 @@ load('community_comparison_all.mat'); % community_comparison.mat + community_com
 
 % postprocess = cell(7,size(Param,2));
 % load('postprocess_densities')
-
+%%
 for ii = 1:size(Param,2)
 % for ii = 1:1
   postprocess{1,ii} = Output_a_f(:,(ii-1)*number_of_animals*number_of_foraging+1:ii*number_of_animals*number_of_foraging);
@@ -38,26 +33,25 @@ for ii = 1:size(Param,2)
 %   postprocess{6,ii} = Effort_t(:,(ii-1)*number_of_animals*number_of_foraging+1:ii*number_of_animals*number_of_foraging*number_of_plants);
   postprocess{7,ii} = Param(:,ii); 
 end
-
 %%
-% % Check for global collapse ?
-% sum_simu = cell(4,size(postprocess,2));
-% for ii = 1:size(postprocess,2)
-%     sum_simu{1,ii} = sum(postprocess{1,ii},'all'); 
-%     sum_simu{2,ii} = sum(postprocess{2,ii},'all'); 
-%     sum_simu{3,ii} = sum(postprocess{4,ii},'all'); 
-%     sum_simu{4,ii} = sum(postprocess{5,ii},'all'); 
-% end
-% sum_simu = cell2mat(sum_simu);
-% 
-% check_for_collapse = sum(sum_simu==0,'all');
-% if check_for_collapse == 0
-%     message2 = sprintf('No simulation collapse')
-% %     msgbox(message2);
-% else
-%     message1 = sprintf('The simulation %d collapse\n',find(sum(sum_simu==0)))
-% %     msgbox(message1);
-% end
+% Check for global collapse ?
+sum_simu = cell(4,size(postprocess,2));
+for ii = 1:size(postprocess,2)
+    sum_simu{1,ii} = sum(postprocess{1,ii},'all'); 
+    sum_simu{2,ii} = sum(postprocess{2,ii},'all'); 
+    sum_simu{3,ii} = sum(postprocess{4,ii},'all'); 
+    sum_simu{4,ii} = sum(postprocess{5,ii},'all'); 
+end
+sum_simu = cell2mat(sum_simu);
+
+check_for_collapse = sum(sum_simu==0,'all');
+if check_for_collapse == 0
+    message2 = sprintf('No simulation collapse')
+%     msgbox(message2);
+else
+    message1 = sprintf('The simulation %d collapse\n',find(sum(sum_simu==0)))
+%     msgbox(message1);
+end
 
 %%
 
@@ -167,10 +161,9 @@ for ii = 1:size(postprocess,2)
 end
 
 sgtitle('Aggregation of all final states ($\sigma_K > \sigma_C)$','interpreter','latex')
+%%
 
-%% Compute this section for agregation of densities over z axis (necessary
-%% to further compute the diversity indices which only consider the
-%% diversity along x axis).
+% Compute the number of species averaged on all simulations : peaks in trait-space
 
 % Reshape animal density (postprocess rows 1 and 4)
 Out_f = cell(1,size(postprocess,2));
@@ -326,7 +319,7 @@ subplot(2,2,2)
 plot(time,biomass_plant_f/size(postprocess,2),'b',time,biomass_plant_t/size(postprocess,2),'r');
 xlim([0 101])
 title('Biomass of resources peaks','interpreter','latex')
-%%
+
 biomass_animal_f = 0;
 biomass_animal_t = 0;
 biomass_plant_f = 0;
@@ -337,7 +330,7 @@ for ii = 1:size(Param,2)
     biomass_plant_f = biomass_plant_f + sum(postprocess{2,ii},2);
     biomass_plant_t = biomass_plant_t + sum(postprocess{5,ii},2);
 end
-time = 1:101;
+
 subplot(2,2,3)
 plot(time,biomass_animal_f/size(postprocess,2),'b',time,biomass_animal_t/size(postprocess,2),'r');
 xlim([0 101])
@@ -390,162 +383,6 @@ set(gca,'TickLabelInterpreter', 'latex');
 set(gca,'XTickLabel', {'with foraging','without'});
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'fontsize',14)
-
-%% NEW FIGURE
-% Compute z average for color in scatters below
-Z_mean = [];
-for ii = 1:size(postprocess,2)
-    animal = postprocess{1,ii};
-    z_mean = [];
-    for i = 0:10
-        a = animal(end-i,:);
-        a_reshape = reshape(a,number_of_animals,number_of_foraging);
-        a_sum_and_norm = sum(a_reshape,1)./sum(sum(a_reshape,1));
-        z_mean = [z_mean,sum(a_sum_and_norm.*foraging_trait)];
-    end
-    Z_mean = [Z_mean, mean(z_mean)];
-end
-
-colormap turbo
-
-subplot(1,2,1)
-% AF COMMUNITY (Y AXIS) IN FUNCTION OF MOWER COMMUNITY (X AXIS)
-% COLOR = MEAN FORAGING TRAIT OF FORAGING COMMU
-% DEVIATION OVER THE LINEAR CURVE X=Y ->> MORE DIVERSITY FOR FORAGING COMMU
-scatter(Biomass_animal_boxplot(:,2),Biomass_animal_boxplot(:,1),40,Z_mean,'filled')
-c = colorbar;
-ylabel(c,'mean foraging trait of community with AF evolution','interpreter','latex','FontSize',15)
-hold on
-x = 0:35;
-y = x;
-plot(x,y)
-hold off
-xlim([0,max(Biomass_animal_boxplot,[],'all')])
-xlabel('biomass without evolution of AF','interpreter','latex','FontSize',20)
-ylabel('biomass with evolution of AF','interpreter','latex','FontSize',20)
-title('consumers','interpreter','latex','FontSize',20)
-
-subplot(1,2,2)
-scatter(Biomass_plant_boxplot(:,2),Biomass_plant_boxplot(:,1),40,Z_mean,'filled')
-c = colorbar;
-ylabel(c,'mean foraging trait of community with AF evolution','interpreter','latex','FontSize',15)
-hold on
-x = 0:250;
-y = x;
-plot(x,y)
-hold off
-xlim([0,max(Biomass_plant_boxplot,[],'all')])
-xlabel('biomass without evolution of AF','interpreter','latex','FontSize',20)
-ylabel('biomass with evolution of AF','interpreter','latex','FontSize',20)
-title('resources','interpreter','latex','FontSize',20)
-%% VARIANTE PLUS CONCISE : PLOT DE LA DISTANCE ENTRE BIOMASSE_TONDEUSE ET BIOMASSE_AF EN FONCTION DU Z_MOYEN 
-dist_biomasse_animal = Biomass_animal_boxplot(:,1) - Biomass_animal_boxplot(:,2); 
-yyaxis left
-s = scatter(Z_mean,dist_biomasse_animal,5,'b','filled');
-s.MarkerFaceAlpha = .5;
-% lm = fitlm(Z_mean',dist_biomasse_animal')
-% coefs = lm.Coefficients.Estimate; % 2x1 [intercept; slope]
-% hold on
-% h = refline(coefs(2),coefs(1)); % plot linear regression fit
-% h.Color = 'b';
-% h.LineWidth = 2;
-% set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-% ylabel('difference in consumer biomass','interpreter','latex','FontSize',20)
-
-dist_biomasse_resource = Biomass_plant_boxplot(:,1) - Biomass_plant_boxplot(:,2); 
-yyaxis right
-s = scatter(Z_mean,dist_biomasse_resource,5,'d','filled','MarkerFaceColor',[.2 .8 .2]);
-s.MarkerFaceAlpha = .5;
-% lm = fitlm(Z_mean',dist_biomasse_resource')
-% coefs = lm.Coefficients.Estimate; % 2x1 [intercept; slope]
-% h = refline(coefs(2),coefs(1)); % plot linear regression fit
-% h.Color = [.2 1 .2];
-% h.LineWidth = 2;
-% hold off
-
-legend('consumers','resources','interpreter','latex','FontSize',15,'location','southeast')
-% xlabel({'mean foraging trait','of community with AF evolution'},'interpreter','latex','FontSize',20)
-% ylabel({'difference in','resource biomass'},'interpreter','latex','FontSize',20)
-ax = gca;
-ax.YAxis(1).Color = 'b';
-ax.YAxis(2).Color = [.2 .8 .2];
-% title('biomass','interpreter','latex','FontSize',20)
-% text(.1,-140,'consumers : R-Squared = 0.0137 / p-value = 0.005','interpreter','latex','FontSize',15)
-% text(.1,-150,'resources : R-Squared = 0.368 / p-value = 8e-52','interpreter','latex','FontSize',15)
-
-% AJOUT MEAN + SHADE STD
-Z_mean_round = round(Z_mean,1); % round pour réduire le nombre de Z différents
-                                % et avoir plusieurs communautés (réplicas)
-                                % pour chaque Z
-Z_unique = unique(Z_mean_round); 
-% RESOURCE
-dist_biomasse_resource_replica = {};
-for i = 1:length(Z_unique)
-    value = Z_unique(i);
-    dist_biomasse_resource_replica{i} = dist_biomasse_resource(Z_mean_round==value);
-end
-dist_biomasse_resource_median = cellfun(@median, dist_biomasse_resource_replica);
-dist_biomasse_resource_mean = cellfun(@mean, dist_biomasse_resource_replica);
-dist_biomasse_resource_std = cellfun(@std, dist_biomasse_resource_replica);
-% CONSUMER
-dist_biomasse_animal_replica = {};
-for i = 1:length(Z_unique)
-    value = Z_unique(i);
-    dist_biomasse_animal_replica{i} = dist_biomasse_animal(Z_mean_round==value);
-end
-dist_biomasse_animal_median = cellfun(@median, dist_biomasse_animal_replica);
-dist_biomasse_animal_mean = cellfun(@mean, dist_biomasse_animal_replica);
-dist_biomasse_animal_std = cellfun(@std, dist_biomasse_animal_replica);
-
-x = 0:.1:1;
-x2 = [x, fliplr(x)];
-
-dist_biomasse_resource_mean = movmean(dist_biomasse_resource_mean,2);
-dist_biomasse_resource_std = movmean(dist_biomasse_resource_std,2);
-yyaxis right
-hold on
-p = plot(Z_unique,dist_biomasse_resource_mean,'--','LineWidth',3,'Color',[.2 .8 .2]);
-set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-inBetween = [dist_biomasse_resource_mean-dist_biomasse_resource_std,...
-    fliplr(dist_biomasse_resource_mean+dist_biomasse_resource_std)];
-h = fill(x2, inBetween, [.2 .8 .2]);
-set(h,'facealpha',.2,'EdgeColor',[.2 .8 .2]);
-set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-hold off
-
-dist_biomasse_animal_mean = movmean(dist_biomasse_animal_mean,2);
-dist_biomasse_animal_std = movmean(dist_biomasse_animal_std,2);
-yyaxis left
-hold on
-p = plot(Z_unique,dist_biomasse_animal_mean,'--b','LineWidth',3);
-set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-inBetween = [dist_biomasse_animal_mean-dist_biomasse_animal_std,...
-    fliplr(dist_biomasse_animal_mean+dist_biomasse_animal_std)];
-h = fill(x2, inBetween, 'b');
-set(h,'facealpha',.2,'EdgeColor','b');
-set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-hold off
-
-ax = gca;
-ax.FontSize = 16;
-xlabel({'mean foraging trait of','community with AF evolution'},'interpreter','latex','FontSize',20)
-ylabel({'difference in','resource biomass'},'interpreter','latex','FontSize',20)
-yyaxis right
-ylabel({'difference in','resource biomass'},'interpreter','latex','FontSize',20)
-
-%%
-x = Z_mean;
-y = dist_biomasse_animal;
-mdl = fitlm(x',y');
-Xnew = linspace(min(x), max(x), 1000)';
-[ypred,yci] = predict(mdl, Xnew);
-figure
-plot(x, y, 'p')
-hold on
-plot(Xnew, ypred, '--g')
-plot(Xnew, yci, '--r')
-hold off
-grid
 
 %%
 % coefficient of variation (average on the last 100 time steps)
@@ -689,10 +526,10 @@ FDis_plant_t = [];
 for ii = 1:size(postprocess,2)  
     
     % Peaks
-%     peak_animal_f = islocalmax(Out_f{:,ii},2);
-%     peak_animal_t = islocalmax(Out_t{:,ii},2);
-%     peak_plant_f = islocalmax(postprocess{2,ii},2);
-%     peak_plant_t = islocalmax(postprocess{5,ii},2);
+    peak_animal_f = islocalmax(Out_f{:,ii},2);
+    peak_animal_t = islocalmax(Out_t{:,ii},2);
+    peak_plant_f = islocalmax(postprocess{2,ii},2);
+    peak_plant_t = islocalmax(postprocess{5,ii},2);
     
     % Densities
     animal_density_f = Out_f{:,ii};
@@ -719,7 +556,7 @@ for ii = 1:size(postprocess,2)
     z_plant_f = abs(xx-C_plant_f);
     FDis_plant_f = [FDis_plant_f,sum(plant_density_f.*z_plant_f,2)./sum(plant_density_f,2)]; 
     z_plant_t = abs(xx-C_plant_t);
-    FDis_plant_t = [FDis_plant_t,sum(plant_density_t.*z_plant_t,2)./sum(plant_density_t,2)];   
+    FDis_plant_t = [FDis_plant_t,sum(plant_density_t.*z_plant_t,2)./sum(plant_density_t,2)]; 
 end
 
 % FDis_animal_f = mean(FDis_animal_f,2);
@@ -789,168 +626,6 @@ set(gca,'XTickLabel', {'with foraging','without'});
 a = get(gca,'XTickLabel');
 set(gca,'XTickLabel',a,'fontsize',14)
 
-%% NEW FIGURE : FDis af en fonction de FDis tondeuse
-
-% Compute z average for color in scatters below
-Z_mean = [];
-for ii = 1:size(postprocess,2)
-    animal = postprocess{1,ii};
-    z_mean = [];
-    for i = 0:10
-        a = animal(end-i,:);
-        a_reshape = reshape(a,number_of_animals,number_of_foraging);
-        a_sum_and_norm = sum(a_reshape,1)./sum(sum(a_reshape,1));
-        z_mean = [z_mean,sum(a_sum_and_norm.*foraging_trait)];
-    end
-    Z_mean = [Z_mean, mean(z_mean)];
-end
-
-colormap turbo
-
-subplot(1,2,1)
-% AF COMMUNITY (Y AXIS) IN FUNCTION OF MOWER COMMUNITY (X AXIS)
-% COLOR = MEAN FORAGING TRAIT OF FORAGING COMMU
-% DEVIATION OVER THE LINEAR CURVE X=Y ->> MORE DIVERSITY FOR FORAGING COMMU
-scatter(FDis_animal_boxplot(2,:),FDis_animal_boxplot(1,:),40,Z_mean,'filled')
-c = colorbar;
-ylabel(c,'mean foraging trait of community with AF evolution','interpreter','latex','FontSize',15)
-hold on
-x = 0:10;
-y = x;
-plot(x,y)
-hold off
-xlim([0,max(FDis_animal_boxplot,[],'all')])
-xlabel('FDis without evolution of AF','interpreter','latex','FontSize',20)
-ylabel('FDis with evolution of AF','interpreter','latex','FontSize',20)
-title('consumers','interpreter','latex','FontSize',20)
-
-subplot(1,2,2)
-scatter(FDis_plant_boxplot(2,:),FDis_plant_boxplot(1,:),40,Z_mean,'filled')
-c = colorbar;
-ylabel(c,'mean foraging trait of community with AF evolution','interpreter','latex','FontSize',15)
-hold on
-x = 0:10;
-y = x;
-plot(x,y)
-hold off
-xlim([0,max(FDis_plant_boxplot,[],'all')])
-xlabel('FDis without evolution of AF','interpreter','latex','FontSize',20)
-ylabel('FDis with evolution of AF','interpreter','latex','FontSize',20)
-title('resources','interpreter','latex','FontSize',20)
-
-%% FDIS IN FUNCTION OF Z_MEAN
-[Z_mean_sort,idx] = sort(Z_mean);
-FDis_animal_f = FDis_animal_boxplot(1,:);
-FDis_animal_sort = FDis_animal_f(idx);
-% x = Z_mean_sort;
-% y = FDis_animal_sort;
-% p = polyfit(x, y, 1);
-% v = polyval(p, x);
-subplot(1,2,1)
-scatter(Z_mean_sort,FDis_animal_sort,50,'filled')
-% hold on
-% plot(x,v,'k','LineWidth',3)
-% hold off
-xlabel('foraging trait','interpreter','latex','FontSize',20)
-ylabel('consumers FDis','interpreter','latex','FontSize',20)
-
-FDis_plant_f = FDis_plant_boxplot(1,:);
-FDis_plant_sort = FDis_plant_f(idx);
-% x = Z_mean_sort;
-% y = FDis_plant_sort;
-% p = polyfit(x, y, 1);
-% v = polyval(p, x);
-subplot(1,2,2)
-scatter(Z_mean_sort,FDis_plant_sort,50,'filled')
-% hold on
-% plot(x,v,'k','LineWidth',3)
-% hold off
-xlabel('foraging trait','interpreter','latex','FontSize',20)
-ylabel('resources FDis','interpreter','latex','FontSize',20)
-
-%% VARIANTE PLUS CONCISE : PLOT DE LA DISTANCE ENTRE BIOMASSE_TONDEUSE ET BIOMASSE_AF EN FONCTION DU Z_MOYEN 
-dist_FDis_animal = FDis_animal_boxplot(1,:) - FDis_animal_boxplot(2,:); 
-s = scatter(Z_mean,dist_FDis_animal,5,'b','filled');
-s.MarkerFaceAlpha = .5;
-% lm = fitlm(Z_mean',dist_FDis_animal)
-% coefs = lm.Coefficients.Estimate; % 2x1 [intercept; slope]
-hold on
-% h = refline(coefs(2),coefs(1)); % plot linear regression fit
-% h.Color = 'b';
-% h.LineWidth = 2;
-% set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-
-dist_FDis_resource = FDis_plant_boxplot(1,:) - FDis_plant_boxplot(2,:); 
-s = scatter(Z_mean,dist_FDis_resource,5,'d','filled','MarkerFaceColor',[.2 .8 .2]);
-s.MarkerFaceAlpha = .5;
-% lm = fitlm(Z_mean',dist_FDis_resource)
-% coefs = lm.Coefficients.Estimate; % 2x1 [intercept; slope]
-% h = refline(coefs(2),coefs(1)); % plot linear regression fit
-% h.Color = [.2 .8 .2];
-% h.LineWidth = 2;
-% hold off
-
-legend('consumers','resources','interpreter','latex','FontSize',15,'location','southeast')
-xlabel({'mean foraging trait','of community with AF evolution'},'interpreter','latex','FontSize',20)
-% ylabel({'difference in','functional diversity FDis'},'interpreter','latex','FontSize',20)
-% title('Functional dispersion FDis','interpreter','latex','FontSize',20)
-% text(.1,-.6,'consumers : R-Squared = 0.783 / p-value = 1.06e-167','interpreter','latex','FontSize',15)
-% text(.1,-.7,'resources : R-Squared = 0.556 / p-value = 5.63e-90','interpreter','latex','FontSize',15)
-
-% AJOUT MEAN + SHADE STD
-Z_mean_round = round(Z_mean,1); % round pour réduire le nombre de Z différents
-                                % et avoir plusieurs communautés (réplicas)
-                                % pour chaque Z
-Z_unique = unique(Z_mean_round); 
-% RESOURCE
-dist_FDis_resource_replica = {};
-for i = 1:length(Z_unique)
-    value = Z_unique(i);
-    dist_FDis_resource_replica{i} = dist_FDis_resource(Z_mean_round==value);
-end
-dist_FDis_resource_median = cellfun(@median, dist_FDis_resource_replica);
-dist_FDis_resource_mean = cellfun(@mean, dist_FDis_resource_replica);
-dist_FDis_resource_std = cellfun(@std, dist_FDis_resource_replica);
-% CONSUMER
-dist_FDis_animal_replica = {};
-for i = 1:length(Z_unique)
-    value = Z_unique(i);
-    dist_FDis_animal_replica{i} = dist_FDis_animal(Z_mean_round==value);
-end
-dist_FDis_animal_median = cellfun(@median, dist_FDis_animal_replica);
-dist_FDis_animal_mean = cellfun(@mean, dist_FDis_animal_replica);
-dist_FDis_animal_std = cellfun(@std, dist_FDis_animal_replica);
-
-x = 0:.1:1;
-x2 = [x, fliplr(x)];
-
-dist_FDis_resource_mean = movmean(dist_FDis_resource_mean,2);
-dist_FDis_resource_std = movmean(dist_FDis_resource_std,2);
-hold on
-p = plot(Z_unique,dist_FDis_resource_mean,'--','LineWidth',3,'Color',[.2 .8 .2]);
-set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-inBetween = [dist_FDis_resource_mean-dist_FDis_resource_std,...
-    fliplr(dist_FDis_resource_mean+dist_FDis_resource_std)];
-h = fill(x2, inBetween, [.2 .8 .2]);
-set(h,'facealpha',.2,'EdgeColor',[.2 .8 .2]);
-set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-
-dist_FDis_animal_mean = movmean(dist_FDis_animal_mean,2);
-dist_FDis_animal_std = movmean(dist_FDis_animal_std,2);
-p = plot(Z_unique,dist_FDis_animal_mean,'--b','LineWidth',3);
-set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-inBetween = [dist_FDis_animal_mean-dist_FDis_animal_std,...
-    fliplr(dist_FDis_animal_mean+dist_FDis_animal_std)];
-h = fill(x2, inBetween, 'b');
-set(h,'facealpha',.2,'EdgeColor','b');
-set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-hold off
-
-ax = gca;
-ax.FontSize = 16;
-xlabel({'mean foraging trait of','community with AF evolution'},'interpreter','latex','FontSize',20)
-ylabel({'difference in','functional diversity FDis'},'interpreter','latex','FontSize',20)
-
 %%
 
 %%%%%%%%%%%%%%%%%%%%%%%%
@@ -964,10 +639,10 @@ FDiv_plant_f = [];
 FDiv_plant_t = [];
 for ii = 1:size(postprocess,2)  
     % Peaks
-%     peak_animal_f = islocalmax(Out_f{:,ii},2);
-%     peak_animal_t = islocalmax(Out_t{:,ii},2);
-%     peak_plant_f = islocalmax(postprocess{2,ii},2);
-%     peak_plant_t = islocalmax(postprocess{5,ii},2);
+    peak_animal_f = islocalmax(Out_f{:,ii},2);
+    peak_animal_t = islocalmax(Out_t{:,ii},2);
+    peak_plant_f = islocalmax(postprocess{2,ii},2);
+    peak_plant_t = islocalmax(postprocess{5,ii},2);
     
 %     Densities
     animal_density_f = Out_f{:,ii};
@@ -1162,7 +837,7 @@ FRO_animal_f = [];
 FRO_animal_t = [];
 FRO_plant_f = [];
 FRO_plant_t = [];
-for k = 1:size(postprocess,2) 
+for k = 1:200
 FRO_animal_f = [FRO_animal_f;sum(min(PEW_animal_f(k,:),1/(number_of_animals-1)))];
 FRO_animal_t = [FRO_animal_t;sum(min(PEW_animal_t(k,:),1/(number_of_animals-1)))];
 FRO_plant_f = [FRO_plant_f;sum(min(PEW_plant_f(k,:),1/(number_of_animals-1)))];
@@ -1174,202 +849,27 @@ end
 % FRO_animal_CK = [FRO_animal_f,FRO_animal_t];
 % FRO_plant_CK = [FRO_plant_f,FRO_plant_t];
 
-%%
 FRO_boxplot_animal = [FRO_animal_f,FRO_animal_t];
 FRO_boxplot_plant = [FRO_plant_f,FRO_plant_t];
 
-% subplot(1,2,1)
-% boxplot(FRO_boxplot_animal)
-% title('Functional regularity of consumers','interpreter','latex','FontSize',18)
-% xticks([1 2 3 4])
-% set(gca,'TickLabelInterpreter', 'latex');
-% set(gca,'XTickLabel', {'with foraging','without'});
-% a = get(gca,'XTickLabel');
-% set(gca,'XTickLabel',a,'fontsize',14)
-% 
-% subplot(1,2,2)
-% boxplot(FRO_boxplot_plant)
-% title('Functional regularity of resources','interpreter','latex','FontSize',18)
-% xticks([1 2 3 4])
-% set(gca,'TickLabelInterpreter', 'latex');
-% set(gca,'XTickLabel', {'with foraging','without'});
-% a = get(gca,'XTickLabel');
-% se% subplot(1,2,1)
-% boxplot(FRO_boxplot_animal)
-% title('Functional regularity of consumers','interpreter','latex','FontSize',18)
-% xticks([1 2 3 4])
-% set(gca,'TickLabelInterpreter', 'latex');
-% set(gca,'XTickLabel', {'with foraging','without'});
-% a = get(gca,'XTickLabel');
-% set(gca,'XTickLabel',a,'fontsize',14)
-% 
-% subplot(1,2,2)
-% boxplot(FRO_boxplot_plant)
-% title('Functional regularity of resources','interpreter','latex','FontSize',18)
-% xticks([1 2 3 4])
-% set(gca,'TickLabelInterpreter', 'latex');
-% set(gca,'XTickLabel', {'with foraging','without'});
-% a = get(gca,'XTickLabel');
-% set(gca,'XTickLabel',a,'fontsize',14)
-% t(gca,'XTickLabel',a,'fontsize',14)
-
-% NEW FIGURE : FRO af en fonction de FRO tondeuse
-
-% Compute z average for color in scatters below
-Z_mean = [];
-for ii = 1:size(postprocess,2)
-    animal = postprocess{1,ii};
-    z_mean = [];
-    for i = 0:10
-        a = animal(end-i,:);
-        a_reshape = reshape(a,number_of_animals,number_of_foraging);
-        a_sum_and_norm = sum(a_reshape,1)./sum(sum(a_reshape,1));
-        z_mean = [z_mean,sum(a_sum_and_norm.*foraging_trait)];
-    end
-    Z_mean = [Z_mean, mean(z_mean)];
-end
-
-colormap turbo
-
 subplot(1,2,1)
-scatter(FRO_boxplot_animal(:,2),FRO_boxplot_animal(:,1),40,Z_mean,'filled')
-c = colorbar;
-ylabel(c,'mean foraging trait of community with AF evolution','interpreter','latex','FontSize',15)
-hold on
-x = 0:10;
-y = x;
-plot(x,y)
-hold off
-xlim([0,max(FRO_boxplot_animal,[],'all')])
-xlabel('FRO without evolution of AF','interpreter','latex','FontSize',20)
-ylabel('FRO with evolution of AF','interpreter','latex','FontSize',20)
-title('consumers','interpreter','latex','FontSize',20)
+boxplot(FRO_boxplot_animal)
+title('Functional regularity of consumers','interpreter','latex','FontSize',18)
+xticks([1 2 3 4])
+set(gca,'TickLabelInterpreter', 'latex');
+set(gca,'XTickLabel', {'with foraging','without'});
+a = get(gca,'XTickLabel');
+set(gca,'XTickLabel',a,'fontsize',14)
 
 subplot(1,2,2)
-scatter(FRO_boxplot_plant(:,2),FRO_boxplot_plant(:,1),40,Z_mean,'filled')
-c = colorbar;
-ylabel(c,'mean foraging trait of community with AF evolution','interpreter','latex','FontSize',15)
-hold on
-x = 0:10;
-y = x;
-plot(x,y)
-hold off
-xlim([0,max(FRO_boxplot_plant,[],'all')])
-xlabel('FRO without evolution of AF','interpreter','latex','FontSize',20)
-ylabel('FRO with evolution of AF','interpreter','latex','FontSize',20)
-title('resources','interpreter','latex','FontSize',20)
+boxplot(FRO_boxplot_plant)
+title('Functional regularity of resources','interpreter','latex','FontSize',18)
+xticks([1 2 3 4])
+set(gca,'TickLabelInterpreter', 'latex');
+set(gca,'XTickLabel', {'with foraging','without'});
+a = get(gca,'XTickLabel');
+set(gca,'XTickLabel',a,'fontsize',14)
 
-%% FRO IN FUNCTION OF Z_MEAN
-[Z_mean_sort,idx] = sort(Z_mean);
-FRO_animal_f = FRO_boxplot_animal(:,1);
-FRO_animal_sort = FRO_animal_f(idx);
-x = Z_mean_sort';
-y = FRO_animal_sort;
-p = polyfit(x, y, 1);
-v = polyval(p, x);
-subplot(1,2,1)
-scatter(Z_mean_sort,FRO_animal_sort,50,'filled')
-hold on
-plot(x,v,'k','LineWidth',3)
-hold off
-xlabel('foraging trait','interpreter','latex','FontSize',20)
-ylabel('consumers FRO','interpreter','latex','FontSize',20)
-
-% [Z_mean_sort,idx] = sort(Z_mean);
-FRO_plant_f = FRO_boxplot_plant(:,2);
-FRO_plant_sort = FRO_plant_f(idx);
-x = Z_mean_sort';
-y = FRO_plant_sort;
-p = polyfit(x, y, 1);
-v = polyval(p, x);
-subplot(1,2,2)
-scatter(Z_mean_sort,FRO_plant_sort,50,'filled')
-hold on
-plot(x,v,'k','LineWidth',3)
-hold off
-xlabel('foraging trait','interpreter','latex','FontSize',20)
-ylabel('resources FRO','interpreter','latex','FontSize',20)
-
-%% VARIANTE PLUS CONCISE : PLOT DE LA DISTANCE ENTRE BIOMASSE_TONDEUSE ET BIOMASSE_AF EN FONCTION DU Z_MOYEN 
-dist_FRO_animal = FRO_boxplot_animal(:,1) - FRO_boxplot_animal(:,2); 
-s = scatter(Z_mean,dist_FRO_animal,5,'b','filled');
-s.MarkerFaceAlpha = .5;
-% lm = fitlm(Z_mean',dist_FRO_animal')
-% coefs = lm.Coefficients.Estimate; % 2x1 [intercept; slope]
-hold on
-% h = refline(coefs(2),coefs(1)); % plot linear regression fit
-% h.Color = 'b';
-% h.LineWidth = 2;
-% set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-
-dist_FRO_resource = FRO_boxplot_plant(:,1) - FRO_boxplot_plant(:,2); 
-s = scatter(Z_mean,dist_FRO_resource,5,'d','filled','MarkerFaceColor',[.2 .8 .2]);
-s.MarkerFaceAlpha = .5;
-% lm = fitlm(Z_mean',dist_FRO_resource')
-% coefs = lm.Coefficients.Estimate; % 2x1 [intercept; slope]
-% h = refline(coefs(2),coefs(1)); % plot linear regression fit
-% h.Color = [.2 .8 .2];
-% h.LineWidth = 2;
-% hold off
-
-legend('consumers','resources','interpreter','latex','FontSize',15,'location','southeast')
-% title('Functional regularity FRO','interpreter','latex','FontSize',20)
-% text(.1,.75,'consumers : R-Squared = 0.36 / p-value = 1.9e-50','interpreter','latex','FontSize',15)
-% text(.1,.7,'resources : R-Squared = 0.321 / p-value = 5.55e-44','interpreter','latex','FontSize',15)
-
-% AJOUT MEAN + SHADE STD
-Z_mean_round = round(Z_mean,1); % round pour réduire le nombre de Z différents
-                                % et avoir plusieurs communautés (réplicas)
-                                % pour chaque Z
-Z_unique = unique(Z_mean_round); 
-% RESOURCE
-dist_FRO_resource_replica = {};
-for i = 1:length(Z_unique)
-    value = Z_unique(i);
-    dist_FRO_resource_replica{i} = dist_FRO_resource(Z_mean_round==value);
-end
-dist_FRO_resource_median = cellfun(@median, dist_FRO_resource_replica);
-dist_FRO_resource_mean = cellfun(@mean, dist_FRO_resource_replica);
-dist_FRO_resource_std = cellfun(@std, dist_FRO_resource_replica);
-% CONSUMER
-dist_FRO_animal_replica = {};
-for i = 1:length(Z_unique)
-    value = Z_unique(i);
-    dist_FRO_animal_replica{i} = dist_FRO_animal(Z_mean_round==value);
-end
-dist_FRO_animal_median = cellfun(@median, dist_FRO_animal_replica);
-dist_FRO_animal_mean = cellfun(@mean, dist_FRO_animal_replica);
-dist_FRO_animal_std = cellfun(@std, dist_FRO_animal_replica);
-
-x = 0:.1:1;
-x2 = [x, fliplr(x)];
-
-dist_FRO_resource_mean = movmean(dist_FRO_resource_mean,2);
-dist_FRO_resource_std = movmean(dist_FRO_resource_std,2);
-hold on
-p = plot(Z_unique,dist_FRO_resource_mean,'--','LineWidth',3,'Color',[.2 .8 .2]);
-set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-inBetween = [dist_FRO_resource_mean-dist_FRO_resource_std,...
-    fliplr(dist_FRO_resource_mean+dist_FRO_resource_std)];
-h = fill(x2, inBetween, [.2 .8 .2]);
-set(h,'facealpha',.2,'EdgeColor',[.2 .8 .2]);
-set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-
-dist_FRO_animal_mean = movmean(dist_FRO_animal_mean,2);
-dist_FRO_animal_std = movmean(dist_FRO_animal_std,2);
-p = plot(Z_unique,dist_FRO_animal_mean,'--b','LineWidth',3);
-set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-inBetween = [dist_FRO_animal_mean-dist_FRO_animal_std,...
-    fliplr(dist_FRO_animal_mean+dist_FRO_animal_std)];
-h = fill(x2, inBetween, 'b');
-set(h,'facealpha',.2,'EdgeColor','b');
-set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-hold off
-
-ax = gca;
-ax.FontSize = 16;
-xlabel({'mean foraging trait of','community with AF evolution'},'interpreter','latex','FontSize',20)
-ylabel({'difference in','functional regularity FRO'},'interpreter','latex','FontSize',20)
 
 %%
 
@@ -1687,6 +1187,7 @@ for jj=1:size(Param,2)
 end
 
 %% BOXPLOT 
+
 % average productivity (on the last 100 time steps)
 Productivity_boxplot_t = mean(Productivity_t(:,end-10:end),2);
 Productivity_boxplot_f = mean(Productivity_f(:,end-10:end),2);
@@ -1700,88 +1201,8 @@ Productivity_boxplot_f = std(Productivity_f(:,end-10:end),0,2)./mean(Productivit
 Productivity_boxplot_cv = [Productivity_boxplot_f,Productivity_boxplot_t];
 boxplot(Productivity_boxplot_cv);
 
-%% PRODUCTIVITY IN FUNCTION OF Z_MEAN
-Z_mean = [];
-for ii = 1:size(postprocess,2)
-    animal = postprocess{1,ii};
-    z_mean = [];
-    for i = 0:10
-        a = animal(end-i,:);
-        a_reshape = reshape(a,number_of_animals,number_of_foraging);
-        a_sum_and_norm = sum(a_reshape,1)./sum(sum(a_reshape,1));
-        z_mean = [z_mean,sum(a_sum_and_norm.*foraging_trait)];
-    end
-    Z_mean = [Z_mean, mean(z_mean)];
-end
-
-% PLOT DE LA DISTANCE ENTRE BIOMASSE_TONDEUSE ET BIOMASSE_AF EN FONCTION DU Z_MOYEN 
-close
-dist_productivity_animal = Productivity_boxplot_f - Productivity_boxplot_t; 
-s = scatter(Z_mean,dist_productivity_animal,5,'b','filled');
-s.MarkerFaceAlpha = .5;
-hold on
-
-% Comparing p-value and Rsquared (lm.Rsquared), the quadratic fit is better
-
-% Linear Fit %
-% lm = fitglm(Z_mean',dist_productivity_animal','linear')
-% coefs = lm.Coefficients.Estimate; % 2x1 [intercept; slope]
-% hold on
-% h = refline(coefs(2),coefs(1)); % plot linear regression fit
-% h.Color = 'b';
-% h.LineWidth = 2;
-% set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-
-% Quadratic Fit %
-% lm2 = fitglm(Z_mean',dist_productivity_animal','quadratic')
-% [p,S] = polyfit(Z_mean',dist_productivity_animal,2);
-% y = polyval(p,Z_mean');
-% [Z_mean,idx] = sort(Z_mean);
-% y = y(idx);
-% p = plot(Z_mean',y,'-b','LineWidth',3);
-% set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-% lm2.Rsquared
-
-% legend('consumers','resources','interpreter','latex','FontSize',15,'location','southeast')
-% title('Functional regularity FRO','interpreter','latex','FontSize',20)
-% text(.1,-2,'R-Squared = 0.1419 / p-value = 3.02e-17','interpreter','latex','FontSize',15)
-% text(.1,.7,'resources : R-Squared = 0.321 / p-value = 5.55e-44','interpreter','latex','FontSize',15)
-
-% AJOUT MEAN + SHADE STD
-Z_mean_round = round(Z_mean,1); % round pour réduire le nombre de Z différents
-                                % et avoir plusieurs communautés (réplicas)
-                                % pour chaque Z
-Z_unique = unique(Z_mean_round); 
-% CONSUMER
-dist_productivity_animal_replica = {};
-for i = 1:length(Z_unique)
-    value = Z_unique(i);
-    dist_productivity_animal_replica{i} = dist_productivity_animal(Z_mean_round==value);
-end
-dist_productivity_animal_median = cellfun(@median, dist_productivity_animal_replica);
-dist_productivity_animal_mean = cellfun(@mean, dist_productivity_animal_replica);
-dist_productivity_animal_std = cellfun(@std, dist_productivity_animal_replica);
-
-x = 0:.1:1;
-x2 = [x, fliplr(x)];
-
-% dist_productivity_animal_mean = movmean(dist_productivity_animal_mean,2);
-% dist_productivity_animal_std = movmean(dist_productivity_animal_std,2);
-p = plot(Z_unique,dist_productivity_animal_mean,'--b','LineWidth',3);
-set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-inBetween = [dist_productivity_animal_mean-dist_productivity_animal_std,...
-    fliplr(dist_productivity_animal_mean+dist_productivity_animal_std)];
-h = fill(x2, inBetween, 'b');
-set(h,'facealpha',.2,'EdgeColor','b');
-set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-hold off
-
-ax = gca;
-ax.FontSize = 16;
-xlabel({'mean foraging trait of','community with AF evolution'},'interpreter','latex','FontSize',20)
-ylabel({'difference in productivity'},'interpreter','latex','FontSize',20)
-
 %%
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% IMAGESC OF ONE COMMUNITY 
 
