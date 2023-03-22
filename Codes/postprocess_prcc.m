@@ -5,7 +5,7 @@ clear all; close all;
 % load('PRCC_b.mat');
 % load('PRCC_c.mat');
 % load('PRCC_all.mat');
-load('PRCC_e.mat');
+load('../Data/PRCC_e.mat');
 foraging_trait = linspace(0,1,11);
 
 %

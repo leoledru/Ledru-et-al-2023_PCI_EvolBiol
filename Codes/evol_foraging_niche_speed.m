@@ -1,8 +1,8 @@
 %% CODE DE LA PERTURBATION NICHE-SPEED
 %% L'OBJET PREP.MAT EST APPELE CAR C'EST LA STRUCTURE DANS LAQUELLE TOUS
 %% LES RESULTATS SONT ENREGISTRES
-
-load('prep.mat')
+clear all;close all
+% load('prep.mat')
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%INITIALISATION%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 number_of_animals = 77;

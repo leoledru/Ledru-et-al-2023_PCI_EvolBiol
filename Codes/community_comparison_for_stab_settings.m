@@ -1,4 +1,4 @@
-load('prep.mat')
+load('../Data/prep.mat')
 
 number_of_animals = 11;
 number_of_plants  = 11;
@@ -134,6 +134,7 @@ handling_time = h(foraging_trait);
 handling_time = reshape(handling_time,1,1,number_of_foraging);
 
 % computation of productivity
+Effort_real_f = zeros(number_of_animals,number_of_plants,number_of_foraging);
 for ii=1:size(animal_t,1)
     % AF
     B_plant_f = plant_f(ii,:)'; % B_plant must be a vertical vector
