@@ -2,29 +2,55 @@
 
 clear all; clc; close all;
 Color = get(gca,'colororder');
-
-% load('../Data/effect_of_z.mat')
-load('../Data/community_comparison_all.mat','Effort_f','Param','Output_a_f','Output_p_f','Output_p_t'); 
-% load('../Data/community_comparison_K4.mat','Effort_f','Param','Output_a_f','Output_p_f','Output_p_t'); 
-
 %% INIT
 number_of_animals = 11 ; % 21; 
 number_of_plants  = 11 ; %21; 
 number_of_foraging = 11; %11
 foraging_trait = linspace(0,1,number_of_foraging);
 
-np = size(Param,2);
-ntt = 101;
-Plant_density  = reshape(Output_p_f,ntt,number_of_plants,np);
-Effort         = reshape(Effort_f,ntt,number_of_plants,number_of_animals*number_of_foraging,size(Param,2));
-Animal_density = reshape(Output_a_f,ntt,number_of_animals,number_of_foraging,np);
-Plant_density_t  = reshape(Output_p_t,ntt,number_of_plants,np);
+% load('../Data/effect_of_z.mat')
+% load('../Data/community_comparison_all.mat','Effort_f','Param','Output_a_f','Output_p_f','Output_p_t'); 
+% load('../Data/community_comparison_K4.mat','Effort_f','Param','Output_a_f','Output_p_f','Output_p_t'); 
+data = [1:23,31:66]; 
+Ndata = length(data);
+Iloop = 20;
+Nt = 10;
+loop = Ndata*Iloop;
+Output_a_f = zeros(loop,Nt+1,number_of_animals,number_of_foraging);
+Output_p_f = zeros(loop,Nt+1,number_of_plants);
+Output_a_t = zeros(loop,Nt+1,number_of_animals,number_of_foraging);
+Output_p_t = zeros(loop,Nt+1,number_of_plants);
+Effort_f = zeros(loop,Nt+1,number_of_animals,number_of_plants,number_of_foraging);
+Effort_t = zeros(loop,Nt+1,number_of_animals,number_of_plants,number_of_foraging);
+PARAM    = zeros(Iloop*Ndata,4);
+for idata = 1:Ndata
+    load(['../Data/community_comparison_K4_',num2str(data(idata)),'.mat']);
+    Output_a_f((idata-1)*Iloop+1:idata*Iloop,:,:,:) = output_a_f; 
+    Output_a_t((idata-1)*Iloop+1:idata*Iloop,:,:,:) = output_a_t ;
+    Output_p_f((idata-1)*Iloop+1:idata*Iloop,:,:) = output_p_f; 
+    Output_p_t((idata-1)*Iloop+1:idata*Iloop,:,:) = output_p_t; 
+    Effort_f((idata-1)*Iloop+1:idata*Iloop,:,:,:,:) = effort_f;
+    Effort_t((idata-1)*Iloop+1:idata*Iloop,:,:,:,:) = effort_t;
+    PARAM((idata-1)*Iloop+1:idata*Iloop,:) = Param(end-Iloop+1:end,:);
+end
+%% INIT
+number_of_animals = 11 ; % 21; 
+number_of_plants  = 11 ; %21; 
+number_of_foraging = 11; %11
+foraging_trait = linspace(0,1,number_of_foraging);
+
+np = loop;
+ntt = Nt+1;
+Plant_density  = permute(Output_p_f,[2,3,1]);
+Effort         = reshape(permute(Effort_f,[2,4,3,5,1]),Nt+1,number_of_plants,number_of_animals*number_of_foraging,loop);
+Animal_density = permute(Output_a_f,[2,3,4,1]);
+Plant_density_t  = permute(Output_p_t,[2,3,1]);
 %% Compute z average for color in scatters below
 nt = 10;
 Z_mean = zeros(1,np);
 Z_var  = zeros(1,np);
 parfor ip = 1:np
-    animal = Animal_density(end-nt+1:end,:,:,ip);
+    animal = Animal_density(:,:,:,ip);
     a_sum_and_norm = permute(sum(animal,2)./sum(animal,[2,3]),[1,3,2]);
     z_mean    = sum(a_sum_and_norm.*foraging_trait,2);
     z_var  = sum(a_sum_and_norm.*(foraging_trait-z_mean).^2,2);
@@ -37,7 +63,9 @@ end
 K0 = 50; % maximal carrying capacity
 y0 = 0 ; %optimal trait
 sigmaK = 2.5;
-Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^2./(2*sigmaK^2));
+% Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^2./(2*sigmaK^2));
+Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^4./(12*sigmaK^4));
+
 
 % FONCTION C(y-y0)
 Beta = 0; % Beta = 0 : symetrical competition
@@ -98,10 +126,10 @@ RHO_t = zeros(1,np);
 % ZZ(1,1,:) = zz;
 % D_ij = permute(repmat(Delta_ij,1,1,nt),[3,1,2]);
 parfor ip = 1:np
-    sigma_loop  = Param(1,:);
-    sigmaK_loop = Param(2,:);
-    hmax_loop   = Param(3,:);
-    animal_intrinsic_growth_loop = Param(4,:);
+    sigma_loop  = PARAM(:,1);
+    sigmaK_loop = PARAM(:,2);
+    hmax_loop   = PARAM(:,3);
+    animal_intrinsic_growth_loop = PARAM(:,4);
     %% SIGMA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     SIGMA = sigma_loop(ip);
     delta_ij = complementary_traits(SIGMA,XX,YY);
@@ -127,6 +155,7 @@ parfor ip = 1:np
 
     % animal_growth
     animal_intrinsic_growth = animal_intrinsic_growth_loop(ip);
+    
     
     %% AF evolution
     plant_density = permute(Plant_density(end,:,ip),[2,3,1]);
@@ -166,12 +195,14 @@ DRHO = (RHO-RHO_t)./RHO_t*100;
 Z_mean_round = round(Z_mean,1); % round pour réduire le nombre de Z différents
 % et avoir plusieurs communautés (réplicas)
 % pour chaque Z
-Z_unique = unique(Z_mean_round);
+x =  0:.1:1;
+Z_unique = x';
 % RESOURCE
 DRHO_replica = {};
 for i = 1:length(Z_unique)
     value = Z_unique(i);
-    DRHO_replica{i} = DRHO(Z_mean_round==value);
+    Iz = logical((Z_mean_round<value+0.01).*(Z_mean_round>value-0.01));
+    DRHO_replica{i} = DRHO(Iz);
 end
 %% 
 DRHO_replica_med   = cellfun(@median, DRHO_replica);
@@ -179,7 +210,7 @@ DRHO_replica_mean   = cellfun(@mean, DRHO_replica);
 DRHO_replica_q_inf = cellfun(@(x) quantile(x,0.25), DRHO_replica);
 DRHO_replica_q_sup = cellfun(@(x) quantile(x,0.75), DRHO_replica);
 
-Z = Z_unique;
+Z = Z_unique';
 ZZ = [Z, fliplr(Z)];
 
 %%% Linear regression
@@ -187,10 +218,10 @@ ZZ = [Z, fliplr(Z)];
 % X = [ones(length(Z_sort),1),Z_sort'];
 % b = X\(RHO(Isort)');
 % Rho_lr = X*b;
-[p,s] = polyfit(Z_sort,DRHO(Isort),1);
-[Rho_lr,dRho] = polyval(p,Z_sort,s);
-Rho_inf = Rho_lr-2*dRho;
-Rho_sup = Rho_lr+2*dRho;
+% [p,s] = polyfit(Z_sort,DRHO(Isort),1);
+% [Rho_lr,dRho] = polyval(p,Z_sort,s);
+% Rho_inf = Rho_lr-2*dRho;
+% Rho_sup = Rho_lr+2*dRho;
 
 figure(1)
 clf

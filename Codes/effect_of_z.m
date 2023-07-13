@@ -14,6 +14,7 @@ K0 = 50; % maximal carrying capacity
 y0 = 0 ; %optimal trait
 sigmaK = 2.5;
 Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^2./(2*sigmaK^2));
+% Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^4./(12*sigmaK^4));
 
 % FONCTION C(y-y0)
 Beta = 0; % Beta = 0 : symetrical competition
@@ -67,16 +68,32 @@ plant_intrinsic_growth  = .8; % .5.*ones(number_of_plants,1);
 seuil_abondance = 1e-5;
 seuil_effort = seuil_abondance;
 plant_intraspe_compet = 0.01;
+handling_time = 0.325;
 
-% HANDLING TIME TRADE-OFF
-% alpha_h = 5; % expo
-alpha_h = 1; % lineaire
-% alpha_h = .5; % racine
-hmin = .1;
-hmax = 0.55;
-h = @(z) hmin + (hmax - hmin).*z.^alpha_h;
-handling_time = h(foraging_trait);
-handling_time = reshape(handling_time,1,1,number_of_foraging);
+%% TRADE-OFF 1) Handling time | 2) Mortality
+Ito = 1;
+    hmin = .1;
+    hmax =  0.55;% 0.7; %
+if (Ito ==1 )
+    % HANDLING TIME TRADE-OFF
+    % alpha_h = 5; % expo
+    alpha_h = 1; % lineaire
+    % alpha_h = .5; % racine
+
+    h = @(z) hmin + (hmax - hmin).*z.^alpha_h;
+    handling_time = h(foraging_trait);
+    handling_time = reshape(handling_time,1,1,number_of_foraging);
+elseif(Ito == 2)
+    % MORTALITY TRADE-OFF
+    alpha_d = 1; % lineaire
+%     dmin = .1*(1-conversion_coeff*(hmax-hmin)/2/handling_time); % .*ones(number_of_animals,1);
+%     dmax = .1*(1+conversion_coeff*(hmax-hmin)/handling_time/2); % .*ones(number_of_animals,1);
+    dmin = .1-conversion_coeff*(hmax-hmin)/2; % .*ones(number_of_animals,1);
+    dmax = .1+conversion_coeff*(hmax-hmin)/2; % .*ones(number_of_animals,1);
+    d = @(z) dmin + (dmax - dmin).*z.^alpha_d;
+    animal_intrinsic_growth = d(foraging_trait);
+%     animal_intrinsic_growth = reshape(animal_intrinsic_growth,1,1,number_of_foraging);
+end
 
 D = 1e-3; % Diffusion coefficient
 e = ones(number_of_animals,1);
@@ -96,11 +113,15 @@ A_foraging = spdiags([e,-2*e,e],-1:1,number_of_foraging,number_of_foraging);
 A_foraging(1,1) = -1; A_foraging(end,end) = -1;
 A_foraging = D*A_foraging/(dx^2);
 
-Output_a = [];
-Output_p = [];
-Effort = [];
-parfor i = 1:number_of_foraging
+tmax = 1e3;
+tspan = 0:10:tmax;
+E_T = 0;
+Nt = length(tspan);
 
+Output_a = zeros(Nt,number_of_animals,number_of_foraging,number_of_foraging);
+Output_p = zeros(Nt,number_of_plants,number_of_foraging);
+Effort   = zeros(Nt,number_of_animals,number_of_plants,number_of_foraging,number_of_foraging);
+parfor i = 1:number_of_foraging
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % EFFORT
     effort_ij0 = delta_ij;
@@ -110,33 +131,32 @@ parfor i = 1:number_of_foraging
 
     animal_density = zeros(number_of_animals,number_of_foraging);
     plant_density = zeros(1,number_of_plants);
-    plant_density((number_of_plants+1)/2) = 1.1;
-    animal_density((number_of_animals+1)/2,i) = 1.1;
+    plant_density((number_of_plants+1)/2) = .1;
+    animal_density((number_of_animals+1)/2,i) = .1;
 
     animal_density = reshape(animal_density,number_of_animals*number_of_foraging,1);
     B = [animal_density ; plant_density' ; effort_ij0];
-    tmax = 1e3;
-    tspan = 0:10:tmax;
-    options = odeset('RelTol',1e-3,'AbsTol',1e-5);
 
+    options = odeset('RelTol',1e-3,'AbsTol',1e-4);
     [t,dB]=ode45(@(t,B) demographic_system_evol_foraging_bis(t, B, number_of_animals, delta_ij, extraction_coeff, conversion_coeff,...
         animal_intrinsic_growth, animal_intraspe_compet, plant_intrinsic_growth, seuil_effort, A_foraging,...
         handling_time, number_of_plants, A_animal, A_plant, dx, dy, dz, Compet, K, seuil_abondance, effort_speed_of_change,...
         number_of_foraging, Foraging_trait, plant_intraspe_compet),tspan, B, options);
 
     animal_density = dB(:,1:number_of_animals*number_of_foraging);
-    plant_density = dB(:,number_of_animals*number_of_foraging+1:number_of_animals*number_of_foraging+number_of_plants);
+    plant_density  = dB(:,number_of_animals*number_of_foraging+1:number_of_animals*number_of_foraging+number_of_plants);
     effort_dynamic = dB(:,number_of_animals*number_of_foraging+number_of_plants+1:end);
 
-    animal_density = animal_density(:,:).*(animal_density(:,:)>seuil_abondance);
-    plant_density = plant_density(:,:).*(plant_density(:,:)>seuil_abondance);
+    animal_density = reshape(animal_density(:,:).*(animal_density(:,:)>seuil_abondance),[Nt,number_of_animals,number_of_foraging]);
+    plant_density  = reshape(plant_density(:,:).*(plant_density(:,:)>seuil_abondance),[Nt,number_of_plants]);
+    effort_dynamic = reshape(effort_dynamic,[Nt,number_of_animals,number_of_plants,number_of_foraging]);
 
-    Output_a = [Output_a,animal_density];
-    Output_p = [Output_p,plant_density];
-    Effort = [Effort,effort_dynamic];
+    Output_a(:,:,:,i) = animal_density;
+    Output_p(:,:,i) = plant_density;
+    Effort(:,:,:,:,i) = effort_dynamic;
 end
 
-save(['effect_of_z_101','.mat'],'Output_a','Output_p','Effort');
+save(['effect_of_z_101_KGaussian_mortality_to','.mat'],'Output_a','Output_p','Effort');
 
 
 

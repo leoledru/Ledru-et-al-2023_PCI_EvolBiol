@@ -20,191 +20,92 @@ dx = 1;
 traits_of_animals = xx';
 foraging_trait = linspace(0,1,number_of_foraging);
 
-% load('community_comparison6.mat');
-% load('community_comparison_CK.mat');
-
-% load('community_comparison.mat');
-% load('community_comparison_b.mat');
-load('../Data/community_comparison_all.mat'); % community_comparison.mat + community_comparison_b.mat
-% load('../Data/community_comparison_K4.mat'); % community_comparison.mat + community_comparison_b.mat
-
-% each column is a simulation, row 1 = animal simu AF; row 2 = plant simu AF;
-% row 3 = Effort simu AF; row 4 = animal simu tondeuse; row 5 = plant simu
-% tondeuse; row 6 = Effort tondeuse; row 7 = params
-
-% postprocess = cell(7,size(Param,2));
-% load('postprocess_densities')
-
-for ii = 1:size(Param,2)
-    % for ii = 1:1
-    postprocess{1,ii} = Output_a_f(:,(ii-1)*number_of_animals*number_of_foraging+1:ii*number_of_animals*number_of_foraging);
-    postprocess{2,ii} = Output_p_f(:,(ii-1)*number_of_plants+1:ii*number_of_plants);
-%     postprocess{3,ii} = Effort_f(:,(ii-1)*number_of_animals*number_of_foraging+1:ii*number_of_animals*number_of_foraging*number_of_plants);
-    postprocess{4,ii} = Output_a_t(:,(ii-1)*number_of_animals*number_of_foraging+1:ii*number_of_animals*number_of_foraging);
-    postprocess{5,ii} = Output_p_t(:,(ii-1)*number_of_plants+1:ii*number_of_plants);
-    %   postprocess{6,ii} = Effort_t(:,(ii-1)*number_of_animals*number_of_foraging+1:ii*number_of_animals*number_of_foraging*number_of_plants);
-    postprocess{7,ii} = Param(:,ii);
+% load('../Data/community_comparison_K4_0.mat'); % community_comparison.mat + community_comparison_b.mat
+data = [1:23,31:66]; 
+Ndata = length(data);
+Iloop = 20;
+Nt = 10;
+loop = Ndata*Iloop;
+Output_a_f = zeros(loop,Nt+1,number_of_animals,number_of_foraging);
+Output_p_f = zeros(loop,Nt+1,number_of_plants);
+Output_a_t = zeros(loop,Nt+1,number_of_animals,number_of_foraging);
+Output_p_t = zeros(loop,Nt+1,number_of_plants);
+Effort_f = zeros(loop,Nt+1,number_of_animals,number_of_plants,number_of_foraging);
+Effort_t = zeros(loop,Nt+1,number_of_animals,number_of_plants,number_of_foraging);
+PARAM    = zeros(Iloop*Ndata,4);
+for idata = 1:Ndata
+    load(['../Data/community_comparison_K4_',num2str(data(idata)),'.mat']);
+    Output_a_f((idata-1)*Iloop+1:idata*Iloop,:,:,:) = output_a_f; 
+    Output_a_t((idata-1)*Iloop+1:idata*Iloop,:,:,:) = output_a_t ;
+    Output_p_f((idata-1)*Iloop+1:idata*Iloop,:,:) = output_p_f; 
+    Output_p_t((idata-1)*Iloop+1:idata*Iloop,:,:) = output_p_t; 
+    Effort_f((idata-1)*Iloop+1:idata*Iloop,:,:,:,:) = effort_f;
+    Effort_t((idata-1)*Iloop+1:idata*Iloop,:,:,:,:) = effort_t;
+    PARAM((idata-1)*Iloop+1:idata*Iloop,:) = Param(end-Iloop+1:end,:);
 end
 
-
-%% Compute this section for agregation of densities over z axis (necessary
-%% to further compute the diversity indices which only consider the
-%% diversity along x axis).
-
-% Reshape animal density (postprocess rows 1 and 4)
-Out_f = cell(1,size(postprocess,2));
-Out_t = cell(1,size(postprocess,2));
-Out_F = cell(1,size(postprocess,2));
-Out_T = cell(1,size(postprocess,2));
-for ii = 1:size(postprocess,2)
-    Output_a_f = zeros(101*11,number_of_plants);
-    Output_a_t = zeros(101*11,number_of_plants);
-    output_a_f = postprocess{1,ii};
-    output_a_t = postprocess{4,ii};
-    for jj = 1:size(output_a_f,1)
-        Output_a_f(11*(jj-1)+1:11*jj,:) = reshape(output_a_f(jj,:),number_of_animals,number_of_foraging);
-        Output_a_t(11*(jj-1)+1:11*jj,:) = reshape(output_a_t(jj,:),number_of_animals,number_of_foraging);
-    end
-    Out_F{1,ii} = Output_a_f;
-    Out_T{1,ii} = Output_a_t;
-end
-%
-% Sum animal densities on foraging trait
-
-for ii = 1:size(postprocess,2)
-    animal_niche_f = zeros(101,number_of_plants);
-    animal_f = Out_F{:,ii};
-    animal_niche_t = zeros(101,number_of_plants);
-    animal_t = Out_T{:,ii};
-    for jj = 1:101
-        animal_niche_f(jj,:) = sum(animal_f((jj-1)*number_of_foraging+1:jj*number_of_foraging,:),2)';
-        animal_niche_t(jj,:) = sum(animal_t((jj-1)*number_of_foraging+1:jj*number_of_foraging,:),2)';
-    end
-    Out_f{:,ii} = animal_niche_f;
-    Out_t{:,ii} = animal_niche_t;
-end
-
-%%
-% BOXPLOT (average on the last 100 time steps)
-
-biomass_animal_f = zeros(size(Param,2),size(postprocess{1,1},1));
-biomass_animal_t = zeros(size(Param,2),size(postprocess{1,1},1));
-biomass_plant_f  = zeros(size(Param,2),size(postprocess{1,1},1));
-biomass_plant_t  = zeros(size(Param,2),size(postprocess{1,1},1));
-for ii = 1:size(Param,2)
-    biomass_animal_f(ii,:) = sum(postprocess{1,ii},2)';
-    biomass_animal_t(ii,:) = sum(postprocess{4,ii},2)';
-    biomass_plant_f(ii,:)  = sum(postprocess{2,ii},2)';
-    biomass_plant_t(ii,:)  = sum(postprocess{5,ii},2)';
-end
-
-Biomass_plant_f = mean(biomass_plant_f(:,end-10:end),2);
-Biomass_plant_t = mean(biomass_plant_t(:,end-10:end),2);
+%% Biomass
+Biomass_plant_f = mean(sum(Output_p_f,3),2);
+Biomass_plant_t = mean(sum(Output_p_t,3),2);
 Biomass_plant_boxplot = [Biomass_plant_f,Biomass_plant_t];
 
-Biomass_animal_f = mean(biomass_animal_f(:,end-10:end),2);
-Biomass_animal_t = mean(biomass_animal_t(:,end-10:end),2);
+Biomass_animal_f = mean(sum(Output_a_f,[3,4]),2);
+Biomass_animal_t = mean(sum(Output_a_t,[3,4]),2);
 Biomass_animal_boxplot = [Biomass_animal_f,Biomass_animal_t];
+%%% Percentage of differnece rate
+dist_biomasse_animal = (Biomass_animal_boxplot(:,1) - Biomass_animal_boxplot(:,2))./Biomass_animal_boxplot(:,2)*100;
+dist_biomasse_resource = (Biomass_plant_boxplot(:,1) - Biomass_plant_boxplot(:,2))./Biomass_plant_boxplot(:,2)*100;
 
-figure(10)
-clf
-subplot(1,2,1)
-boxplot(Biomass_animal_boxplot)
-title('Total consumers biomass','interpreter','latex','FontSize',18)
-xticks([1 2 3 4])
-set(gca,'TickLabelInterpreter', 'latex');
-set(gca,'XTickLabel', {'with foraging','without'});
-a = get(gca,'XTickLabel');
-set(gca,'XTickLabel',a,'fontsize',14)
+Z_mean = mean(sum(sum(Output_a_f,3)./sum(Output_a_f,[3,4]).*reshape(foraging_trait,[1,1,1,number_of_foraging]),4),2);
 
-subplot(1,2,2)
-boxplot(Biomass_plant_boxplot)
-title('Total resources biomass','interpreter','latex','FontSize',18)
-xticks([1 2 3 4])
-set(gca,'TickLabelInterpreter', 'latex');
-set(gca,'XTickLabel', {'with foraging','without'});
-a = get(gca,'XTickLabel');
-set(gca,'XTickLabel',a,'fontsize',14)
-
-%% Compute z average for color in scatters below
-Z_mean = zeros(1,size(postprocess,2));
-Z_var  = zeros(1,size(postprocess,2));
-for ii = 1:size(postprocess,2)
-    animal = postprocess{1,ii};
-    z_mean = [];
-    z_var =  [];
-    for i = 0:10
-        a = animal(end-i,:);
-        a_reshape = reshape(a,number_of_animals,number_of_foraging);
-        a_sum_and_norm = sum(a_reshape,1)./sum(sum(a_reshape,1));
-        z_m    = sum(a_sum_and_norm.*foraging_trait);
-        z_mean = [z_mean,z_m];
-        z_var  = [z_var,sum(a_sum_and_norm.*(foraging_trait-z_m).^2)];
-    end
-    Z_mean(ii) = mean(z_mean);
-    Z_var(ii)  = mean(z_var);
-end
-
-
-%% VARIANTE PLUS CONCISE : PLOT DE LA DISTANCE ENTRE BIOMASSE_TONDEUSE ET BIOMASSE_AF EN FONCTION DU Z_MOYEN
+%% FIGURE BIOMASS
 figure(1)
 clf
 hold on
 l = line([1,0],[0,0],'color','k','linewidth',2,'linestyle','-');
 set(get(get(l,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
 
-%%% Absolute differnece
-% dist_biomasse_animal = Biomass_animal_boxplot(:,1) - Biomass_animal_boxplot(:,2);
-%%% Percentage of differnece rate
-dist_biomasse_animal = (Biomass_animal_boxplot(:,1) - Biomass_animal_boxplot(:,2))./Biomass_animal_boxplot(:,2)*100;
-
 % yyaxis left
 s = scatter(Z_mean,dist_biomasse_animal,5,Color(1,:),'filled');
 s.MarkerFaceAlpha = .5;
-%%% Absolute differnece
-% dist_biomasse_resource = Biomass_plant_boxplot(:,1) - Biomass_plant_boxplot(:,2);
-%%% Percentage of differnece rate
-dist_biomasse_resource = (Biomass_plant_boxplot(:,1) - Biomass_plant_boxplot(:,2))./Biomass_plant_boxplot(:,2)*100;
 
 % yyaxis right
 s = scatter(Z_mean,dist_biomasse_resource,5,'d','filled','MarkerFaceColor',Color(5,:));
 s.MarkerFaceAlpha = .5;
-
+axis([0,1,-50,100])
 legend('consumers','resources','interpreter','latex','FontSize',15,'location','northwest')
-% ax = gca;
-% ax.YAxis(1).Color = Color(1,:); %'b';
-% ax.YAxis(2).Color = Color(5,:); %[.2 .8 .2];
+
 
 % AJOUT MEAN + SHADE STD
 Z_mean_round = round(Z_mean,1); % round pour réduire le nombre de Z différents
 % et avoir plusieurs communautés (réplicas)
-% pour chaque Z
-Z_unique = unique(Z_mean_round);
-% RESOURCE
+% pour chaque 
+x =  0:.1:1;
+Z_unique = x';
+% Z_unique = unique(Z_mean_round);
+% RESOURCE / CONSUMER
 dist_biomasse_resource_replica = {};
+dist_biomasse_animal_replica = {};
+
 for i = 1:length(Z_unique)
     value = Z_unique(i);
-    dist_biomasse_resource_replica{i} = dist_biomasse_resource(Z_mean_round==value);
+    Iz = logical((Z_mean_round<value+0.01).*(Z_mean_round>value-0.01));
+    dist_biomasse_resource_replica{i} = dist_biomasse_resource(Iz);
+    dist_biomasse_animal_replica{i}   = dist_biomasse_animal(Iz);
 end
+% RESOURCE
 dist_biomasse_resource_median = cellfun(@median, dist_biomasse_resource_replica);
 dist_biomasse_resource_quantile_inf = cellfun(@(x) quantile(x,0.25), dist_biomasse_resource_replica);
 dist_biomasse_resource_quantile_sup = cellfun(@(x) quantile(x,0.75), dist_biomasse_resource_replica);
 dist_biomasse_resource_mean = cellfun(@mean, dist_biomasse_resource_replica);
 dist_biomasse_resource_std = cellfun(@std, dist_biomasse_resource_replica);
 % CONSUMER
-dist_biomasse_animal_replica = {};
-for i = 1:length(Z_unique)
-    value = Z_unique(i);
-    dist_biomasse_animal_replica{i} = dist_biomasse_animal(Z_mean_round==value);
-end
 dist_biomasse_animal_median = cellfun(@median, dist_biomasse_animal_replica);
 dist_biomasse_animal_quantile_inf = cellfun(@(x) quantile(x,0.25), dist_biomasse_animal_replica);
 dist_biomasse_animal_quantile_sup = cellfun(@(x) quantile(x,0.75), dist_biomasse_animal_replica);
-
 dist_biomasse_animal_mean = cellfun(@mean, dist_biomasse_animal_replica);
 dist_biomasse_animal_std = cellfun(@std, dist_biomasse_animal_replica);
 
-x = 0:.1:1;
 x2 = [x, fliplr(x)];
 
 dist_biomasse_resource_mean = movmean(dist_biomasse_resource_mean,2);
@@ -269,102 +170,57 @@ hold off
 
 ax = gca;
 ax.FontSize = 16;
-yticks(ax,[-75 -50 -25 0 25 50 75])
-yticklabels(ax,{'-75','-50','-25','0','25','50','75'})
+% yticks(ax,[-75 -50 -25 0 25 50 75])
+% yticklabels(ax,{'-75','-50','-25','0','25','50','75'})
 grid on
 ax.GridLineStyle = '--';
 xlabel({'mean foraging trait of','the system with AF evolution'},'interpreter','latex','FontSize',20)
 ylabel({'Percent difference'; 'in biomass'},'interpreter','latex','FontSize',20,'color','k')
-% yyaxis right
-% ylabel({'difference in','resource biomass'},'interpreter','latex','FontSize',20)
-% Make the axis align
-% align_yyaxis_zero(ax)
 
-%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%
-% FUNCTIONAL DIVERSITY %
-% Laliberté & Legendre 2010 %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%% FUNCTIONAL DIVERSITY %
+%% Laliberté & Legendre 2010 %
 %%%%%%%%%%%%%%%%%%%%%%%%
 
-FDis_animal_f = zeros(101,size(Param,2));
-FDis_animal_t = zeros(101,size(Param,2));
-FDis_plant_f = zeros(101,size(Param,2));
-FDis_plant_t = zeros(101,size(Param,2));
-for ii = 1:size(postprocess,2)
-    % Densities
-    animal_density_f = Out_f{:,ii};
-    plant_density_f = postprocess{2,ii};
-    animal_density_t = Out_t{:,ii};
-    plant_density_t = postprocess{5,ii};
-    
-    % Centroid
-    C_animal_f = sum(animal_density_f.*xx,2)./sum(animal_density_f,2);
-    C_animal_t = sum(animal_density_t.*xx,2)./sum(animal_density_t,2);
-    C_plant_f = sum(plant_density_f.*xx,2)./sum(plant_density_f,2);
-    C_plant_t = sum(plant_density_t.*xx,2)./sum(plant_density_t,2);
-    
-    % Functional dispersion
-    z_animal_f = abs(xx-C_animal_f);
-    FDis_animal_f(:,ii) = sum(animal_density_f.*z_animal_f,2)./sum(animal_density_f,2);
-    z_animal_t = abs(xx-C_animal_t);
-    FDis_animal_t(:,ii) = sum(animal_density_t.*z_animal_t,2)./sum(animal_density_t,2);
-    z_plant_f = abs(xx-C_plant_f);
-    FDis_plant_f(:,ii) = sum(plant_density_f.*z_plant_f,2)./sum(plant_density_f,2);
-    z_plant_t = abs(xx-C_plant_t);
-    FDis_plant_t(:,ii) = sum(plant_density_t.*z_plant_t,2)./sum(plant_density_t,2);
-end
+FDis_animal_f = zeros(loop,Nt+1);
+FDis_animal_t = zeros(loop,Nt+1);
+FDis_plant_f = zeros(loop,Nt+1);
+FDis_plant_t = zeros(loop,Nt+1);
+% Densities
+animal_density_f = Output_a_f;
+plant_density_f = Output_p_f;
+animal_density_t = Output_a_t;
+plant_density_t = Output_p_t;
 
-%%
-%%%%%%%%%%%
-% Boxplot %
-% average on the last 100 time steps
-FDis_animal_boxplot = [mean(FDis_animal_f(end-10:end,:),1);mean(FDis_animal_t(end-10:end,:),1)];
-FDis_plant_boxplot = [mean(FDis_plant_f(end-10:end,:),1);mean(FDis_plant_t(end-10:end,:),1)];
+% Centroid
+C_animal_f = sum(animal_density_f.*reshape(xx,[1,1,number_of_animals,1]),[3,4])./sum(animal_density_f,[3,4]);
+C_animal_t = sum(animal_density_t.*reshape(xx,[1,1,number_of_animals,1]),[3,4])./sum(animal_density_t,[3,4]);
+C_plant_f  = sum(plant_density_f.*reshape(xx,[1,1,number_of_plants]),3)./sum(plant_density_f,3);
+C_plant_t  = sum(plant_density_t.*reshape(xx,[1,1,number_of_plants]),3)./sum(plant_density_t,3);
 
-figure(11)
-clf
-subplot(1,2,1)
-boxplot(FDis_animal_boxplot')
-title('Functional dispersion of consumers','interpreter','latex','FontSize',18)
-xticks([1 2 3 4])
-set(gca,'TickLabelInterpreter', 'latex');
-set(gca,'XTickLabel', {'with foraging','without'});
-a = get(gca,'XTickLabel');
-set(gca,'XTickLabel',a,'fontsize',14)
 
-subplot(1,2,2)
-boxplot(FDis_plant_boxplot')
-title('Functional dispersion of resources','interpreter','latex','FontSize',18)
-xticks([1 2 3 4])
-set(gca,'TickLabelInterpreter', 'latex');
-set(gca,'XTickLabel', {'with foraging','without'});
-a = get(gca,'XTickLabel');
-set(gca,'XTickLabel',a,'fontsize',14)
+% Functional dispersion
+z_animal_f = abs(xx-C_animal_f);
+FDis_animal_f = sum(animal_density_f.*reshape(z_animal_f,[loop,1,number_of_animals,1]),[3,4])./sum(animal_density_f,[3,4]);
+z_animal_t    = abs(xx-C_animal_t);
+FDis_animal_t = sum(animal_density_t.*reshape(z_animal_t,[loop,1,number_of_animals,1]),[3,4])./sum(animal_density_t,[3,4]);
+z_plant_f     = abs(xx-C_plant_f);
+FDis_plant_f  = sum(plant_density_f.*reshape(z_plant_f,[loop,1,number_of_plants]),3)./sum(plant_density_f,3);
+z_plant_t     = abs(xx-C_plant_t);
+FDis_plant_t  = sum(plant_density_t.*reshape(z_plant_t,[loop,1,number_of_plants]),3)./sum(plant_density_t,3);
 
-%%  Compute z average for color in scatters below
-Z_mean = [];
-for ii = 1:size(postprocess,2)
-    animal = postprocess{1,ii};
-    z_mean = [];
-    for i = 0:10
-        a = animal(end-i,:);
-        a_reshape = reshape(a,number_of_animals,number_of_foraging);
-        a_sum_and_norm = sum(a_reshape,1)./sum(sum(a_reshape,1));
-        z_mean = [z_mean,sum(a_sum_and_norm.*foraging_trait)];
-    end
-    Z_mean = [Z_mean, mean(z_mean)];
-end
+FDis_animal_boxplot = [mean(FDis_animal_f,2)';mean(FDis_animal_t,2)'];
+FDis_plant_boxplot = [mean(FDis_plant_f,2)';mean(FDis_plant_t,2)'];
 
-%% VARIANTE PLUS CONCISE : PLOT DE LA DISTANCE ENTRE BIOMASSE_TONDEUSE ET BIOMASSE_AF EN FONCTION DU Z_MOYEN
+
+%% FIGURE FDIS
 figure(2)
 clf
 hold on
 l = line([1,0],[0,0],'color','k','linewidth',2,'linestyle','-');
 set(get(get(l,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
 
-%%% Absolute difference
-% dist_FDis_animal = FDis_animal_boxplot(1,:) - FDis_animal_boxplot(2,:);
 %%% Relative difference
 dist_FDis_animal = (FDis_animal_boxplot(1,:) - FDis_animal_boxplot(2,:))./FDis_animal_boxplot(2,:)*100;
 
@@ -372,8 +228,6 @@ s = scatter(Z_mean,dist_FDis_animal,5,Color(1,:),'filled');
 s.MarkerFaceAlpha = .5;
 hold on
 
-%%% Absolute differnece
-% dist_FDis_resource = FDis_plant_boxplot(1,:) - FDis_plant_boxplot(2,:);
 %%% Relative difference
 dist_FDis_resource = (FDis_plant_boxplot(1,:) - FDis_plant_boxplot(2,:) )./FDis_plant_boxplot(2,:)*100;
 
@@ -384,34 +238,36 @@ legend('consumers','resources','interpreter','latex','FontSize',15,'location','n
 xlabel({'mean foraging trait','of community with AF evolution'},'interpreter','latex','FontSize',20)
 
 % AJOUT MEAN + SHADE STD
-Z_mean_round = round(Z_mean,1); % round pour réduire le nombre de Z différents
+% Z_mean_round = round(Z_mean,1); % round pour réduire le nombre de Z différents
 % et avoir plusieurs communautés (réplicas)
 % pour chaque Z
-Z_unique = unique(Z_mean_round);
-% RESOURCE
+% x =  0:.1:1;
+% Z_unique = x';
+% Z_unique = unique(Z_mean_round);
+% RESOURCE / CONSUMER
 dist_FDis_resource_replica = {};
+dist_FDis_animal_replica = {};
+
 for i = 1:length(Z_unique)
     value = Z_unique(i);
-    dist_FDis_resource_replica{i} = dist_FDis_resource(Z_mean_round==value);
+    Iz = logical((Z_mean_round<value+0.01).*(Z_mean_round>value-0.01));
+    dist_FDis_resource_replica{i} = dist_FDis_resource(Iz);
+    dist_FDis_animal_replica{i}   = dist_FDis_animal(Iz);
 end
+% RESOURCE
 dist_FDis_resource_median = cellfun(@median, dist_FDis_resource_replica);
 dist_FDis_resource_quantile_inf = cellfun(@(x) quantile(x,0.25), dist_FDis_resource_replica);
 dist_FDis_resource_quantile_sup = cellfun(@(x) quantile(x,0.75), dist_FDis_resource_replica);
 dist_FDis_resource_mean = cellfun(@mean, dist_FDis_resource_replica);
 dist_FDis_resource_std = cellfun(@std, dist_FDis_resource_replica);
 % CONSUMER
-dist_FDis_animal_replica = {};
-for i = 1:length(Z_unique)
-    value = Z_unique(i);
-    dist_FDis_animal_replica{i} = dist_FDis_animal(Z_mean_round==value);
-end
-dist_FDis_animal_median = cellfun(@median, dist_FDis_animal_replica);
+dist_FDis_animal_median = cellfun(@nanmedian, dist_FDis_animal_replica);
 dist_FDis_animal_quantile_inf = cellfun(@(x) quantile(x,0.25), dist_FDis_animal_replica);
 dist_FDis_animal_quantile_sup = cellfun(@(x) quantile(x,0.75), dist_FDis_animal_replica);
 dist_FDis_animal_mean = cellfun(@mean, dist_FDis_animal_replica);
 dist_FDis_animal_std = cellfun(@std, dist_FDis_animal_replica);
 
-x  = 0:.1:1;
+
 x2 = [x, fliplr(x)];
 
 dist_FDis_resource_mean = movmean(dist_FDis_resource_mean,2);
@@ -472,14 +328,13 @@ grid on
 ax.GridLineStyle = '--';
 xlabel({'mean foraging trait of','the system with AF evolution'},'interpreter','latex','FontSize',20)
 ylabel({'Percent difference in','functional diversity'},'interpreter','latex','FontSize',20)
-%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% PRODUCTIVITY %%%
+%% PRODUCTIVITY %%%
 % Sum of all consumers functional responses weigthed by the consumers abundances
 % = flux from resources to consumers
 
-load('../Data/community_comparison_all.mat'); % community_comparison.mat + community_comparison_b.mat
+% load('../Data/community_comparison_all.mat'); % community_comparison.mat + community_comparison_b.mat
 % load('../Data/community_comparison_K4.mat'); % community_comparison.mat + community_comparison_b.mat
 
 number_of_animals = 11;
@@ -490,7 +345,9 @@ number_of_foraging = 11;
 K0 = 50; % maximal carrying capacity
 y0 = 0; % optimal trait
 sigmaK = 2.5;
-Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^2./(2*sigmaK^2));
+% Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^2./(2*sigmaK^2));
+Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^4./(12*sigmaK^4));
+
 
 % FONCTION C(y-y0)
 Beta = 0; % Beta = 0 : symetrical competition
@@ -550,13 +407,13 @@ handling_time = h(foraging_trait);
 handling_time = reshape(handling_time,1,1,number_of_foraging);
 
 
-Productivity_f = zeros(size(Param,2),101);
-Productivity_t = zeros(size(Param,2),101);
-for jj=1:size(Param,2)
-    sigma_loop  = Param(1,:);
-    sigmaK_loop = Param(2,:);
-    hmax_loop   = Param(3,:);
-    animal_intrinsic_growth_loop = Param(4,:);
+Productivity_f = zeros(loop,Nt+1);
+Productivity_t = zeros(loop,Nt+1);
+for jj=1:loop 
+    sigma_loop  = PARAM(:,1);
+    sigmaK_loop = PARAM(:,2);
+    hmax_loop   = PARAM(:,3);
+    animal_intrinsic_growth_loop = PARAM(:,4);
     %% SIGMA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     SIGMA = sigma_loop(jj);
     delta_ij = complementary_traits(SIGMA,XX,YY);
@@ -564,7 +421,7 @@ for jj=1:size(Param,2)
     
     %% SIGMA_K %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     sigmaK = sigmaK_loop(jj);
-    %          Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^2./(2*sigmaK^2));
+%   Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^2./(2*sigmaK^2));
     Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^4./(12*sigmaK^4));
     
     sigmaC = sigmaK-1;
@@ -580,19 +437,12 @@ for jj=1:size(Param,2)
     % animal_growth
     animal_intrinsic_growth = animal_intrinsic_growth_loop(jj);
     
-    b_animal_f = Output_a_f(:,(jj-1)*number_of_animals*number_of_foraging+1:jj*number_of_animals*number_of_foraging);
-    b_plant_f = Output_p_f(:,(jj-1)*number_of_plants+1:jj*number_of_plants);
-    effort_ij_f = Effort_f(:,(jj-1)*number_of_animals*number_of_foraging*number_of_plants+1:jj*number_of_animals*number_of_foraging*number_of_plants);
-    b_animal_t = Output_a_t(:,(jj-1)*number_of_animals*number_of_foraging+1:jj*number_of_animals*number_of_foraging);
-    b_plant_t = Output_p_t(:,(jj-1)*number_of_plants+1:jj*number_of_plants);
-    effort_ij_t = Effort_t(:,(jj-1)*number_of_animals*number_of_foraging*number_of_plants+1:jj*number_of_animals*number_of_foraging*number_of_plants);
-    
-    for ii=1:101
+    for ii=1:Nt+1
         % AF
-        B_plant_f = b_plant_f(ii,:)'; % B_plant must be a vertical vector
-        B_animal_f = reshape(b_animal_f(ii,:),number_of_animals,number_of_foraging);
+        B_plant_f = permute(Output_p_f(jj,ii,:),[3,1,2]); % B_plant must be a vertical vector
+        B_animal_f = permute(Output_a_f(jj,ii,:,:),[3,4,1,2]);
         % reshape effort AF
-        Effort_ij_f = reshape(effort_ij_f(ii,:),number_of_animals,number_of_plants,number_of_foraging);
+        Effort_ij_f = permute(Effort_f(jj,ii,:,:,:),[3,4,5,1,2]);
         % compute effort mower
         Effort_sans_of_f = zeros(number_of_animals,number_of_plants);
         Effort_sans_of_f(:,B_plant_f>seuil_effort) = Effort_sans_of_f(:,B_plant_f>seuil_effort) + B_plant_f(B_plant_f>seuil_effort)';
@@ -610,10 +460,10 @@ for jj=1:size(Param,2)
         Productivity_f(jj,ii) = sum(functional_response_animal_f,'all')*dz*dx;
         
         % MOWER
-        B_plant_t = b_plant_t(ii,:)'; % B_plant must be a vertical vector
-        B_animal_t = reshape(b_animal_t(ii,:),number_of_animals,number_of_foraging);
+        B_plant_t  = permute(Output_p_t(jj,ii,:),[3,1,2]); % B_plant must be a vertical vector
+        B_animal_t = permute(Output_a_t(jj,ii,:,:),[3,4,1,2]);
         % reshape effort AF
-        Effort_ij_t = reshape(effort_ij_t(ii,:),number_of_animals,number_of_plants,number_of_foraging);
+        Effort_ij_t = permute(Effort_t(jj,ii,:,:,:),[3,4,5,1,2]); % compute effort mower
         % compute effort mower
         Effort_sans_of_t = zeros(number_of_animals,number_of_plants);
         Effort_sans_of_t(:,B_plant_t>seuil_effort) = Effort_sans_of_t(:,B_plant_t>seuil_effort) + B_plant_t(B_plant_t>seuil_effort)';
@@ -632,38 +482,19 @@ for jj=1:size(Param,2)
     end
 end
 
-%% BOXPLOT
-% average productivity (on the last 100 time steps)
-Productivity_boxplot_t = mean(Productivity_t(:,end-10:end),2);
-Productivity_boxplot_f = mean(Productivity_f(:,end-10:end),2);
+%% FIGURE PRODUCTIVITY
+Productivity_boxplot_t = mean(Productivity_t,2);
+Productivity_boxplot_f = mean(Productivity_f,2);
 Productivity_boxplot_mean = [Productivity_boxplot_f,Productivity_boxplot_t];
-figure(12)
-clf
-boxplot(Productivity_boxplot_mean);
-title('Productivity','interpreter','latex','FontSize',18)
-%% PRODUCTIVITY IN FUNCTION OF Z_MEAN
-Z_mean = [];
-for ii = 1:size(postprocess,2)
-    animal = postprocess{1,ii};
-    z_mean = [];
-    for i = 0:10
-        a = animal(end-i,:);
-        a_reshape = reshape(a,number_of_animals,number_of_foraging);
-        a_sum_and_norm = sum(a_reshape,1)./sum(sum(a_reshape,1));
-        z_mean = [z_mean,sum(a_sum_and_norm.*foraging_trait)];
-    end
-    Z_mean = [Z_mean, mean(z_mean)];
-end
-
-%% PLOT DE LA DISTANCE ENTRE BIOMASSE_TONDEUSE ET BIOMASSE_AF EN FONCTION DU Z_MOYEN
 
 figure(3)
 clf
 hold on
 l = line([1,0],[0,0],'color','k','linewidth',2,'linestyle','-');
 set(get(get(l,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-%%% Absolute diffenrence
-% dist_productivity_animal = Productivity_boxplot_f - Productivity_boxplot_t;
+%%% Absolute differnece
+% dist_productivity_animal = (Productivity_boxplot_f - Productivity_boxplot_t);
+
 %%% Relative differnece
 dist_productivity_animal = (Productivity_boxplot_f - Productivity_boxplot_t)./Productivity_boxplot_t*100;
 
@@ -672,23 +503,21 @@ s.MarkerFaceAlpha = .5;
 hold on
 
 % AJOUT MEAN + SHADE STD
-Z_mean_round = round(Z_mean,1); % round pour réduire le nombre de Z différents
-% et avoir plusieurs communautés (réplicas)
-% pour chaque Z
-Z_unique = unique(Z_mean_round);
-% CONSUMER
 dist_productivity_animal_replica = {};
+% CONSUMER
 for i = 1:length(Z_unique)
     value = Z_unique(i);
-    dist_productivity_animal_replica{i} = dist_productivity_animal(Z_mean_round==value);
+    Iz = logical((Z_mean_round<value+0.01).*(Z_mean_round>value-0.01));
+    dist_productivity_animal_replica{i} = dist_productivity_animal(Iz);
 end
-dist_productivity_animal_median = cellfun(@median, dist_productivity_animal_replica);
+
+dist_productivity_animal_median = cellfun(@nanmedian, dist_productivity_animal_replica);
 dist_productivity_animal_quantile_inf = cellfun(@(x) quantile(x,0.25), dist_productivity_animal_replica);
 dist_productivity_animal_quantile_sup = cellfun(@(x) quantile(x,0.75), dist_productivity_animal_replica);
 dist_productivity_animal_mean = cellfun(@mean, dist_productivity_animal_replica);
 dist_productivity_animal_std = cellfun(@std, dist_productivity_animal_replica);
 
-x = 0:.1:1;
+% x = 0:.1:1;
 x2 = [x, fliplr(x)];
 
 if (choice == 1)
@@ -724,167 +553,3 @@ ax.GridLineStyle = '--';
 xlabel({'mean foraging trait of','the system with AF evolution'},'interpreter','latex','FontSize',20)
 ylabel({'Percent difference'; 'in productivity'},'interpreter','latex','FontSize',20)
 
-% %%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%% IMAGESC OF ONE COMMUNITY
-%
-% % simu_animal = Out_t{1,1};
-% % simu_plant = Output_p_t(1:50,1:11);
-% simu_animal = Out_f{1,1};
-% simu_plant = Output_p_f(1:50,1:11);
-%
-% subplot(1,2,1)
-% % imAlpha=ones(size(simu_animal(1:50,:)));
-% % imAlpha(simu_animal(1:50,:)==0)=0;
-% % imagesc(heatmap,'AlphaData',imAlpha);
-% cmap = jet(256);
-% cmap(1,:) = 0;
-% imagesc(simu_animal(1:50,:));%,'AlphaData',imAlpha);
-% colormap(cmap);
-% h = colorbar;
-% xlabel('Niche trait $x$','interpreter','latex','FontSize',18);
-% set(gca,'XTick',1:11,'XTickLabel',xx)
-% ylabel(h,'Abundance','interpreter','latex','FontSize',18);
-% ylabel('Time','interpreter','latex','FontSize',18)
-% title('Consumers','interpreter','latex','FontSize',18)
-% subplot(1,2,2)
-% imagesc(simu_plant)
-% xlabel('Niche trait $y$','interpreter','latex','FontSize',18);
-% set(gca,'XTick',1:11,'XTickLabel',xx)
-% ylabel(h,'Abundance','interpreter','latex','FontSize',18);
-% ylabel('Time ','interpreter','latex','FontSize',18)
-% title('Resources','interpreter','latex','FontSize',18)
-% h = colorbar;
-%
-% % sgtitle('Mower community','interpreter','latex','FontSize',18);
-% sgtitle('Foraging community','interpreter','latex','FontSize',18);
-%
-% % xlabel('niche trait $x$','interpreter','latex','FontSize',20);
-% % set(gca,'XTick',1:11,'XTickLabel',xx)
-% % caxis([0 1]);
-% %
-% % % lsline;
-% % % colormap(myColorMap)
-% % h = colorbar;
-% % ylabel(h,'foraging trait $z$','interpreter','latex','FontSize',20);
-%
-%
-% %% FIND PARAMETERS LEADING TO DYNAMIC COMMUNITY
-%
-% biomass_animal = cell(1,length(Out_f));
-%
-% for ii = 1:length(Out_f)
-%     biomass_animal{ii} = sum(Out_f{ii},2);
-%     biomass_eq = biomass_animal{ii};
-%     biomass_eq = biomass_eq(end-50:end);
-%     biomass_var(ii) = var(biomass_eq);
-% end
-%
-% %% check the stationnary and dynamic communities
-% index_statio = find(biomass_var<1);
-% index_dyn = find(biomass_var>=1);
-%
-% for ii = 1:length(index_statio)
-%     subplot(2,1,1)
-%     plot(biomass_animal{index_statio(ii)});
-%     hold on
-% end
-% title('total animal biomass for stationnary communities','interpreter','latex','FontSize',20)
-% hold off
-%
-% for ii = 1:length(index_dyn)
-%     subplot(2,1,2)
-%     plot(biomass_animal{index_dyn(ii)});
-%     hold on
-% end
-% title('total animal biomass for dynamic communities','interpreter','latex','FontSize',20)
-% hold off
-%
-% %% find if AF evolve in the stationnary communities (not so much, AF is stronger in dynamic communities)
-% close
-%
-% Z_final = [];
-% for ii = index_statio
-%     final = Out_F{ii};
-%     final = reshape(final(end-10:end,:),number_of_animals,number_of_foraging);
-%     final = sum(final,1);
-%     z_final = final./(sum(final));
-%     Z_final = [Z_final;z_final];
-% end
-%
-% Z_final_dyn = [];
-% for ii = index_dyn
-%     final = Out_F{ii};
-%     final = reshape(final(end-10:end,:),number_of_animals,number_of_foraging);
-%     final = sum(final,1);
-%     z_final = final./(sum(final));
-%     Z_final_dyn = [Z_final_dyn;z_final];
-% end
-%
-% plot(foraging_trait,sum(Z_final,1),'-*','LineWidth',2)
-% hold on
-% plot(foraging_trait,sum(Z_final_dyn,1),'r-*','LineWidth',2)
-% hold off
-% legend('stationnary communities','dynamic communities','interpreter','latex','FontSize',15)
-% xlabel('foraging trait','interpreter','latex','FontSize',20)
-% ylabel('mean densities over all runs','interpreter','latex','FontSize',20)
-%
-% set(gcf, 'Position', get(0, 'Screensize'));
-%
-% %% parameters leading to stationnary or dynamic communities
-% % Param = [SIGMA,sigmaK,hmax,alpha_h]];
-% close
-%
-% subplot(1,4,1)
-% plot(Param(1,index_statio),'b*')
-% hold on
-% plot(Param(1,index_dyn),'r*')
-% title('$\sigma$','interpreter','latex','FontSize',15)
-%
-% subplot(1,4,2)
-% plot(Param(2,index_statio),'b*')
-% hold on
-% plot(Param(2,index_dyn),'r*')
-% title('$\sigma_K$','interpreter','latex','FontSize',15)
-%
-% subplot(1,4,3)
-% plot(Param(3,index_statio),'b*')
-% hold on
-% plot(Param(3,index_dyn),'r*')
-% title('$h_{max}$','interpreter','latex','FontSize',15)
-%
-% subplot(1,4,4)
-% plot(Param(4,index_statio),'b*')
-% hold on
-% plot(Param(4,index_dyn),'r*')
-% title('$\alpha_h$','interpreter','latex','FontSize',15)
-% legend('stationnary communities','dynamical communities','interpreter','latex','Location','northwest','FontSize',15)
-%
-% set(gcf, 'Position', get(0, 'Screensize'));
-%
-% %% Test of visualization of community-proxy
-%
-% % dominant trait
-% close
-%
-% simu = Out_F{5};
-%
-% dominant_x = cell(1,101);
-% for ii = 1:101
-%     matrix = simu((ii-1)*number_of_animals+1:ii*number_of_animals,:);
-%     sum_on_z = sum(matrix,2);
-%     dominant_x{ii} = find(sum_on_z==max(sum_on_z));
-% end
-%
-% for ii = 1:length(dominant_x)
-%     plot(ii,xx(dominant_x{ii}),'b-*')
-%     hold on
-% end
-%
-%
-%
-%
-%
-%
-%
-%
