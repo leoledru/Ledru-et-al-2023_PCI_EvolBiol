@@ -8,6 +8,13 @@ Color = get(gca,'colororder');
 number_of_animals = 11 ; % 21;
 number_of_plants  = 11 ; %21;
 number_of_foraging = 101; %11
+% Plants traits
+ymin = -5 ;
+ymax = 5 ;
+yy = linspace(ymin,ymax,number_of_plants);
+dy = 1;
+traits_of_plants = yy';
+
 nt = 10;
 NjK = 3;
 RHO_MEAN = zeros(NjK,number_of_foraging);
@@ -26,13 +33,18 @@ for jK = 1:NjK
     K0 = 50; % maximal carrying capacity
     y0 = 0 ; %optimal trait
     sigmaK = 2.5;
-    Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^2./(2*sigmaK^2));
-    
+    if (jK == 2)
+        Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^4./(12*sigmaK^4));
+    else
+        Kf = @(trait_plant) K0*exp(-(trait_plant - y0).^2./(2*sigmaK^2));
+    end
+    KF = Kf(traits_of_plants);
     % FONCTION C(y-y0)
     Beta = 0; % Beta = 0 : symetrical competition
     sigmaC = sigmaK-1;
     C = @(trait_plant_y,trait_plant_yi) exp(sigmaC^2*Beta^2/2).*exp(-(trait_plant_y-trait_plant_yi + sigmaC^2*Beta^2).^2./(2*sigmaC^2));
-    
+    Compet = C(traits_of_plants,traits_of_plants');
+
     % TRAITS %
     % Animal traits
     xmin = -5 ;
@@ -87,19 +99,32 @@ for jK = 1:NjK
     for tAF = 0:nt-1
         effort = reshape(Effort(end-tAF,:),number_of_plants,number_of_animals,number_of_foraging,number_of_foraging);
         plant_density = reshape(Output_p(end-tAF,:),number_of_plants,number_of_foraging);
+        animal_density = reshape(Output_a(end-tAF,:),number_of_animals,number_of_foraging,number_of_foraging);
         Rho = zeros(1,number_of_foraging);
-        parfor iAF = 1:number_of_foraging
+        for iAF = 1:number_of_foraging
             plant_iAF = plant_density(:,iAF);
+            animal_iAF = permute(animal_density(:,:,iAF),[3,1,2]);
             effort_AF  = reshape(effort(:,:,:,iAF),number_of_plants,number_of_animals*number_of_foraging);
             effort_t   = plant_iAF./sum(plant_iAF+ (sum(plant_iAF)==0) );
             effort_iAF = effort_AF.*zz+(1-zz).*effort_t;
             
-            ui = effort_iAF.* plant_iAF.*Delta_ij;
-            dui = 1+Hz.*extraction_coeff.*sum(ui,1);
-            uui = ui./dui;
-            Ui = uui'*uui;
+            ui = effort_iAF.*Delta_ij;
+            dui = 1+Hz.*extraction_coeff.*sum(ui.* plant_iAF,1);
+            uui = ui./dui; 
+            % Uui = dz*sum(reshape(uui,number_of_plants,number_of_animals,number_of_foraging),3);
+            Uui = sum(reshape(uui,number_of_plants,number_of_animals,number_of_foraging).*animal_iAF,3)./sum(animal_iAF,3);
+
+
+            % uui_mean = sum(ui.*plant_iAF,1)./(sum(plant_iAF,1) + (sum(plant_iAF,1)==0) );
+            % Ui = ((uui-uui_mean).* plant_iAF)'*(uui-uui_mean);
+            al = Compet*plant_iAF./(plant_iAF.*KF);
+            % Ui = (uui./(plant_intrinsic_growth.*al))'*(uui);
+            % Ui = (uui.* plant_iAF)'*uui;
+            Ui = (Uui)'*Uui;  %% GOOD OUTPUT
+            % Ui = (Uui./(plant_intrinsic_growth.*al))'*Uui;  
+
             norm_Ui = diag(Ui);
-            N_Ui = sqrt(norm_Ui+norm_Ui');
+            N_Ui = sqrt(norm_Ui*norm_Ui');
             UUi = (Ui-diag(norm_Ui))./N_Ui;
             Rho(iAF) = mean(UUi(UUi>0));
         end
@@ -111,19 +136,32 @@ end
 %% FIGURE
 nr = size(R,2);
 zz = repmat(foraging_trait,nr,1);
+
+%% Comapre with quartic kernel
 figure(1)
 clf
 hold on
 % scatter(zz(:),R(:),'filled')
 scatter(foraging_trait,RHO_MEAN(1,:),'filled')
 % scatter(foraging_trait,RHO_MEAN(2,:),'filled','d')
-% plot(foraging_trait,RHO_MEAN(2,:),'--','LineWidth',4,'color',Color(1,:))
-plot(foraging_trait,RHO_MEAN(3,:),'-.','LineWidth',4,'color',Color(1,:))
+plot(foraging_trait,RHO_MEAN(2,:),'--','LineWidth',4,'color',Color(1,:))
 ax = gca;
 ax.FontSize = 16;
 xlabel({'foraging trait $z$'},'interpreter','latex','FontSize',20)
 ylabel('Niche overlap $\rho$','interpreter','latex','FontSize',20,'color','k')
 
+%% Compare with mortality
+figure(2)
+clf
+hold on
+% scatter(zz(:),R(:),'filled')
+scatter(foraging_trait,RHO_MEAN(1,:),'filled')
+% scatter(foraging_trait,RHO_MEAN(2,:),'filled','d')
+plot(foraging_trait,RHO_MEAN(3,:),'-.','LineWidth',4,'color',Color(1,:))
+ax = gca;
+ax.FontSize = 16;
+xlabel({'foraging trait $z$'},'interpreter','latex','FontSize',20)
+ylabel('Niche overlap $\rho$','interpreter','latex','FontSize',20,'color','k')
 
 
 
