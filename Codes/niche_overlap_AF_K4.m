@@ -158,31 +158,39 @@ parfor ip = 1:np
     
     
     %% AF evolution
+    animal_density = Animal_density(end,:,:,ip);
     plant_density = permute(Plant_density(end,:,ip),[2,3,1]);
     effort_AF  = permute(Effort(end,:,:,ip),[2,3,4,1]);
     effort_t   = plant_density./(sum(plant_density,1) + (sum(plant_density,1)==0) );
     effort_iAF = effort_AF.*zz+(1-zz).*effort_t;
     
-    ui = effort_iAF.* plant_density.*Delta_ij;
-    dui = 1+Hz.*extraction_coeff.*sum(ui,1);
-    uui = ui./dui;
-    Ui = uui'*uui;
-    norm_Ui = diag(Ui);
-    N_Ui = sqrt(norm_Ui+norm_Ui');
-    UUi = (Ui-diag(norm_Ui))./N_Ui;
-    Rho = mean(UUi(UUi>0));
-    RHO(ip) = Rho;
+    ci  = effort_iAF.*Delta_ij;
+    cci = ci./(1+Hz.*extraction_coeff.*sum(ci.*plant_density,1));
+    Cci = sum(reshape(cci,number_of_plants,number_of_animals,number_of_foraging).*animal_density,3)./sum(animal_density,3);
+
+    % al = Compet*plant_density./(plant_density.*Kf(traits_of_plants));
     
+    % cci_mean = sum(ci.*plant_density,1)./(sum(plant_density,1) + (sum(plant_density,1)==0) );
+    % Ci  = ((cci-cci_mean).*plant_density)'*(cci-cci_mean);
+    % Ci  = (Cci./(plant_intrinsic_growth*al))'*(Cci);
+    Ci  = (Cci)'*(Cci);
+
+    norm_Ci = diag(Ci);
+    N_Ci = sqrt(norm_Ci*norm_Ci');
+    CCi = (Ci-diag(norm_Ci))./N_Ci;
+    Rho = mean(CCi(CCi>0));
+    RHO(ip) = Rho;
     %% Random Foraging
     plant_density = permute(Plant_density_t(end,:,ip),[2,3,1]);
     effort_t      = plant_density./(sum(plant_density,1) + (sum(plant_density,1)==0) );
     effort_iAF    = effort_t;
-    ui = effort_iAF.* plant_density.*Delta_ij;
-    dui = 1+Hz.*extraction_coeff.*sum(ui,1);
+    ui = effort_iAF.*Delta_ij;
+    dui = 1+Hz.*extraction_coeff.*sum(ui.* plant_density,1);
     uui = ui./dui;
+    % al = Compet*plant_density./(plant_density.*Kf(traits_of_plants));
     Ui = uui'*uui;
     norm_Ui = diag(Ui);
-    N_Ui = sqrt(norm_Ui+norm_Ui');
+    N_Ui = sqrt(norm_Ui*norm_Ui');
     UUi = (Ui-diag(norm_Ui))./N_Ui;
     Rho = mean(UUi(UUi>0));
     RHO_t(ip) = Rho;
@@ -247,8 +255,8 @@ pmed = plot(Z_unique,DRHO_replica_med,'--','LineWidth',3,'Color',Color(1,:));
 %%% MEAN    
 % pm = plot(Z_unique,DRHO_replica_mean,'--','LineWidth',3,'Color',Color(3,:));
 
-ymax = max(DRHO_replica_q_sup)*1.1;
-ymin = min(DRHO_replica_q_inf)*1.1;
+ymax = max(max(DRHO_replica_q_sup)*1.1,5);
+ymin = max(min(DRHO_replica_q_inf)*1.1,-100);
     ylim([ymin,ymax])
 
 set(get(get(h,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
@@ -257,7 +265,7 @@ ax = gca;
 ax.FontSize = 16;
 grid on
 ax.GridLineStyle = '--';
-xlabel({'mean foraging trait of','the system with AF evolution'},'interpreter','latex','FontSize',20)
+xlabel({'mean foraging trait of','the system with PF evolution'},'interpreter','latex','FontSize',20)
 ylabel({'Percent difference'; 'in niche overlap'},'interpreter','latex','FontSize',20,'color','k')
 
 
