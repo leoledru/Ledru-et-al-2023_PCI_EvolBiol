@@ -82,17 +82,27 @@ for niz = 1:nz
     for tAF = 0:nt-1
         effort = reshape(EF(end-tAF,:),number_of_plants,number_of_animals,number_of_foraging,number_of_animals);
         plant_density = reshape(Out_p(end-tAF,:),number_of_plants,number_of_animals);
+        animal_density = reshape(Out_a(end-tAF,:),number_of_animals,number_of_foraging,number_of_animals);
+
         Rho = zeros(1,number_of_animals);
         parfor iAF = 1:number_of_animals
             plant_iAF = plant_density(:,iAF);
+            animal_iAF = permute(animal_density(:,:,iAF),[3,1,2]);
+
             effort_AF  = reshape(effort(:,:,:,iAF),number_of_plants,number_of_animals*number_of_foraging);
             effort_t   = plant_iAF./sum(plant_iAF+ (sum(plant_iAF)==0) );
             effort_iAF = effort_AF.*zz+(1-zz).*effort_t;
             
-            ui = effort_iAF.* plant_iAF.*Delta_ij;
-            dui = 1+Hz.*extraction_coeff.*sum(ui,1);
-            uui = ui./dui;
-            Ui = uui'*uui;
+            ui = effort_iAF.*Delta_ij;
+            dui = 1+Hz.*extraction_coeff.*sum(ui.* plant_iAF,1);
+            uui = ui./dui; 
+            Uui = sum(reshape(uui,number_of_plants,number_of_animals,number_of_foraging).*animal_iAF,3)./sum(animal_iAF,3);
+            Ui = (Uui)'*Uui;  %% GOOD OUTPUT
+            
+            % ui = effort_iAF.* plant_iAF.*Delta_ij;
+            % dui = 1+Hz.*extraction_coeff.*sum(ui,1);
+            % uui = ui./dui;
+            % Ui = uui'*uui;
             norm_Ui = diag(Ui);
             N_Ui = sqrt(norm_Ui+norm_Ui');
             UUi = (Ui-diag(norm_Ui))./N_Ui;
